@@ -16,16 +16,14 @@ public struct ServerConfig: Sendable {
     }
 }
 
-/// Serveur HTTP exposant le LLM on-device via des surfaces REST compatibles
-/// OpenAI (`/v1/chat/completions`, `/v1/models`) et Anthropic (`/v1/messages`).
+/// Serveur HTTP exposant le LLM on-device via REST compatibles OpenAI et Anthropic,
+/// avec streaming SSE (`stream: true`).
 public enum FoundationBridgeServer {
 
     public static func makeApplication(config: ServerConfig = .init()) -> some ApplicationProtocol {
         let router = Router()
 
-        router.get("/healthz") { _, _ in
-            "ok"
-        }
+        router.get("/healthz") { _, _ in "ok" }
 
         router.get("/v1/models") { _, _ -> Response in
             let json = #"{"object":"list","data":[{"id":"apple-foundation","object":"model","owned_by":"apple"}]}"#
@@ -33,14 +31,15 @@ public enum FoundationBridgeServer {
         }
 
         router.post("/v1/chat/completions") { request, _ -> Response in
-            let buffer = try await request.body.collect(upTo: 1 << 20)
-            let data = Data(buffer.readableBytesView)
+            let data = Data(try await request.body.collect(upTo: 1 << 20).readableBytesView)
             do {
                 let req = try JSONDecoder().decode(OpenAIChatRequest.self, from: data)
                 let (prompt, options) = RequestConverter.extract(from: req)
+                if req.stream == true {
+                    return sse(prompt: prompt, options: options, model: req.model, dialect: .openAI)
+                }
                 let text = try await generate(prompt: prompt, options: options)
-                let resp = ResponseBuilder.openAI(text: text, model: req.model)
-                return jsonResponse(try JSONEncoder().encode(resp))
+                return jsonResponse(try JSONEncoder().encode(ResponseBuilder.openAI(text: text, model: req.model)))
             } catch let error as BridgeError {
                 return jsonError(error)
             } catch {
@@ -49,14 +48,15 @@ public enum FoundationBridgeServer {
         }
 
         router.post("/v1/messages") { request, _ -> Response in
-            let buffer = try await request.body.collect(upTo: 1 << 20)
-            let data = Data(buffer.readableBytesView)
+            let data = Data(try await request.body.collect(upTo: 1 << 20).readableBytesView)
             do {
                 let req = try JSONDecoder().decode(AnthropicRequest.self, from: data)
                 let (prompt, options) = RequestConverter.extract(from: req)
+                if req.stream == true {
+                    return sse(prompt: prompt, options: options, model: req.model, dialect: .anthropic)
+                }
                 let text = try await generate(prompt: prompt, options: options)
-                let resp = ResponseBuilder.anthropic(text: text, model: req.model)
-                return jsonResponse(try JSONEncoder().encode(resp))
+                return jsonResponse(try JSONEncoder().encode(ResponseBuilder.anthropic(text: text, model: req.model)))
             } catch let error as BridgeError {
                 return jsonError(error)
             } catch {
@@ -70,7 +70,7 @@ public enum FoundationBridgeServer {
         )
     }
 
-    // MARK: - Helpers
+    // MARK: - Génération
 
     static func generate(prompt: String, options: GenerationOptions) async throws -> String {
         #if canImport(FoundationModels)
@@ -79,6 +79,65 @@ public enum FoundationBridgeServer {
         }
         #endif
         throw BridgeError.modelUnavailable(reason: "FoundationModels indisponible sur cette plateforme")
+    }
+
+    static func generateStream(prompt: String, options: GenerationOptions) -> AsyncThrowingStream<String, Error> {
+        #if canImport(FoundationModels)
+        if #available(macOS 26.0, *) {
+            return FoundationModelsGenerator().stream(to: prompt, options: options)
+        }
+        #endif
+        return AsyncThrowingStream { $0.finish(throwing: BridgeError.modelUnavailable(reason: "FoundationModels indisponible")) }
+    }
+
+    // MARK: - SSE
+
+    enum Dialect { case openAI, anthropic }
+
+    static func sse(prompt: String, options: GenerationOptions, model: String, dialect: Dialect) -> Response {
+        let body = ResponseBody { writer in
+            var writer = writer
+            func send(_ s: String) async throws {
+                try await writer.write(ByteBuffer(bytes: Data(s.utf8)))
+            }
+            do {
+                if dialect == .anthropic {
+                    try await send("event: message_start\ndata: {\"type\":\"message_start\"}\n\n")
+                }
+                for try await chunk in generateStream(prompt: prompt, options: options) {
+                    switch dialect {
+                    case .openAI:
+                        let payload = ["choices": [["index": 0, "delta": ["content": chunk]]]] as [String: Any]
+                        try await send("data: \(jsonString(payload))\n\n")
+                    case .anthropic:
+                        let payload = ["type": "content_block_delta", "index": 0,
+                                       "delta": ["type": "text_delta", "text": chunk]] as [String: Any]
+                        try await send("event: content_block_delta\ndata: \(jsonString(payload))\n\n")
+                    }
+                }
+                if dialect == .openAI {
+                    try await send("data: {\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n")
+                    try await send("data: [DONE]\n\n")
+                } else {
+                    try await send("event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n")
+                }
+            } catch {
+                try? await send("data: {\"error\":\"\(error)\"}\n\n")
+            }
+            try await writer.finish(nil)
+        }
+        var headers = HTTPFields()
+        headers[.contentType] = "text/event-stream"
+        headers[.cacheControl] = "no-cache"
+        return Response(status: .ok, headers: headers, body: body)
+    }
+
+    // MARK: - Helpers
+
+    static func jsonString(_ object: [String: Any]) -> String {
+        guard let data = try? JSONSerialization.data(withJSONObject: object),
+              let s = String(data: data, encoding: .utf8) else { return "{}" }
+        return s
     }
 
     static func jsonResponse(_ data: Data, status: HTTPResponse.Status = .ok) -> Response {

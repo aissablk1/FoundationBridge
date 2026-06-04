@@ -1,181 +1,183 @@
 ---
-title: FoundationBridge — Spec de conception (v1/v2)
+title: FoundationBridge — Design spec (v1/v2)
 date: 2026-06-04
 author: Aïssa BELKOUSSA
-statut: en revue
+status: in review
 tags: [swift, foundation-models, mcp, acp, openai, anthropic, on-device, apple-silicon, gateway]
-licence: Apache-2.0
+license: Apache-2.0
 ---
 
-# FoundationBridge — Spécification de conception
+# FoundationBridge — Design specification
 
-> **Une seule passerelle native qui expose le LLM on-device d'Apple (FoundationModels, macOS 26 / Apple Silicon) à tout l'écosystème agentique** — via MCP, REST OpenAI-compatible, REST Anthropic-compatible, proxy, ACP, CLI et WebSocket — depuis **un seul binaire Swift**, plus des SDK clients multi-langages générés.
+🇬🇧 **English** · 🇫🇷 [Français](2026-06-04-foundationbridge-design.fr.md)
 
-**Auteur** : Aïssa BELKOUSSA · **Date** : 2026-06-04 · **Licence** : Apache-2.0
-**Cible matérielle** : Mac Apple Silicon (M1+), macOS 26, Apple Intelligence activé.
+> **A single native gateway that exposes Apple's on-device LLM (FoundationModels, macOS 26 / Apple Silicon) to the whole agentic ecosystem** — via MCP, OpenAI-compatible REST, Anthropic-compatible REST, proxy, ACP, CLI and WebSocket — from **a single Swift binary**, plus generated multi-language client SDKs.
+
+**Author**: Aïssa BELKOUSSA · **Date**: 2026-06-04 · **License**: Apache-2.0
+**Target hardware**: Apple Silicon Mac (M1+), macOS 26, Apple Intelligence enabled.
 
 ---
 
-## 1. Problème & raison d'être
+## 1. Problem & rationale
 
-La recherche comparative (7 projets existants, 4 protocoles — voir §9 Sources) établit un **manque net** : **aucun** projet ne réunit dans un seul binaire :
+Comparative research (7 existing projects, 4 protocols — see §9 Sources) establishes a **clear gap**: **no** project combines, in a single binary:
 
-- un **binding FoundationModels natif** (inférence on-device, gratuite, privée),
-- **+** une double surface **REST OpenAI ET Anthropic**,
-- **+** un **mode proxy** (`ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL`),
-- **+** un **serveur MCP** (stdio + Streamable HTTP),
-- **+** un pont **ACP (Zed Agent Client Protocol)**.
+- a **native FoundationModels binding** (on-device, free, private inference),
+- **+** a dual **OpenAI AND Anthropic REST** surface,
+- **+** a **proxy mode** (`ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL`),
+- **+** an **MCP server** (stdio + Streamable HTTP),
+- **+** an **ACP (Zed Agent Client Protocol)** bridge.
 
-| Projet | A | Manque |
+| Project | Has | Missing |
 |---|---|---|
-| `phimage/mcp-foundation-models` | MCP natif propre | stdio seul, pas de streaming, pas de sessions, abandonné |
-| `apfel` (upstream, 5,5k ⭐) | REST OpenAI natif + MCP | pas d'Anthropic, contexte 4096 |
-| `waybarrios/vllm-mlx` | OpenAI+Anthropic+proxy | sur **MLX**, pas FoundationModels |
-| `claude-local-proxy` | conversion Anthropic↔OpenAI | sur **vLLM**, quasi mort, pas de tests |
-| `macOS26/Agent` | FoundationModels.Tool + 18 providers | app fermée sur soi, IP 100 % maison |
-| `deckameron/Ti.Apple.Intelligence` | helpers haut niveau | session unique, pas de tool calling, schéma simulé |
-| ToolPiper | gateway HTTP + MCP façade | **closed source** |
+| `phimage/mcp-foundation-models` | clean native MCP | stdio only, no streaming, no sessions, abandoned |
+| `apfel` (upstream, 5.5k ⭐) | native OpenAI REST + MCP | no Anthropic, 4096 context |
+| `waybarrios/vllm-mlx` | OpenAI+Anthropic+proxy | on **MLX**, not FoundationModels |
+| `claude-local-proxy` | Anthropic↔OpenAI conversion | on **vLLM**, near-dead, no tests |
+| `macOS26/Agent` | FoundationModels.Tool + 18 providers | self-contained app, 100% in-house IP |
+| `deckameron/Ti.Apple.Intelligence` | high-level helpers | single session, no tool calling, simulated schema |
+| ToolPiper | HTTP gateway + MCP façade | **closed source** |
 
-**FoundationBridge comble exactement cette combinaison manquante.**
-
----
-
-## 2. Objectifs / Non-objectifs
-
-### Objectifs
-- Exposer FoundationModels via **tous** les protocoles ciblés (livrés en 2 vagues).
-- **Un cœur unique** réutilisable, des **façades protocolaires fines** additives.
-- Qualité production : **tests (golden + e2e), CI macOS 26, releases signées**.
-- Réutiliser des **dépendances éprouvées** (anti-réinvention) plutôt que réimplémenter.
-
-### Non-objectifs (YAGNI)
-- Pas de portage Linux/x86/Windows (FoundationModels est Apple-only — assumé).
-- Pas de scaling GPU serveur (modèle on-device, ~4096 tokens).
-- Pas de multimodal/embeddings en v1.
-- Pas de chatbot de culture générale (modèle ~3 Mds spécialisé tâches courtes).
+**FoundationBridge fills exactly this missing combination.**
 
 ---
 
-## 3. Critères d'acceptation (v1)
+## 2. Goals / Non-goals
 
-1. **Claude Code** via `ANTHROPIC_BASE_URL` local → réponse complète **et** streaming.
-2. **Client OpenAI** via `OPENAI_BASE_URL` → `/v1/chat/completions` (stream + non) et `/v1/models`.
-3. **Claude Desktop / Cursor** via **MCP** (stdio) → génération + sortie structurée `@Generable`.
-4. **CLI** : prompt unique, chat interactif, stdin/pipe, **codes de sortie sémantiques**.
-5. `availability` vérifiée → erreur **actionnable** (HTTP 503/409, code de sortie dédié), jamais de crash opaque.
-6. Dépassement `.exceededContextWindowSize` → **HTTP 413/422** exploitable.
-7. **Couche de conversion Anthropic↔OpenAI** : suite de **golden tests** sur traces SSE réelles, verte.
-8. **CI GitHub Actions** runner **macOS 26** : build + tests verts (gate : vert avant merge).
+### Goals
+- Expose FoundationModels through **all** targeted protocols (shipped in 2 waves).
+- **A single reusable core** with **thin, additive protocol façades**.
+- Production quality: **tests (golden + e2e), macOS 26 CI, signed releases**.
+- Reuse **proven dependencies** (anti-reinvention) rather than reimplement.
+
+### Non-goals (YAGNI)
+- No Linux/x86/Windows port (FoundationModels is Apple-only — accepted).
+- No server-side GPU scaling (on-device model, ~4096 tokens).
+- No multimodal/embeddings in v1.
+- No general-knowledge chatbot (~3B model specialized for short tasks).
 
 ---
 
-## 4. Architecture — « un cœur, plusieurs façades »
+## 3. Acceptance criteria (v1)
 
-Séparer le **plan exécution** (binding FoundationModels) du **plan transport** (protocoles).
+1. **Claude Code** via local `ANTHROPIC_BASE_URL` → full response **and** streaming.
+2. **OpenAI client** via `OPENAI_BASE_URL` → `/v1/chat/completions` (stream + non) and `/v1/models`.
+3. **Claude Desktop / Cursor** via **MCP** (stdio) → generation + structured `@Generable` output.
+4. **CLI**: single prompt, interactive chat, stdin/pipe, **semantic exit codes**.
+5. `availability` checked → **actionable** error (HTTP 503/409, dedicated exit code), never an opaque crash.
+6. `.exceededContextWindowSize` overflow → usable **HTTP 413/422**.
+7. **Anthropic↔OpenAI conversion layer**: green suite of **golden tests** on real SSE traces.
+8. **GitHub Actions CI** on a **macOS 26** runner: green build + tests (gate: green before merge).
+
+---
+
+## 4. Architecture — "one core, many façades"
+
+Separate the **execution plane** (FoundationModels binding) from the **transport plane** (protocols).
 
 ```
 FoundationBridge/  (SwiftPM, Swift 6.x strict concurrency, Apache-2.0)
-├── FoundationBridgeCore/            # logique métier réutilisable
+├── FoundationBridgeCore/            # reusable business logic
 │   ├── ModelService/
 │   │   ├── AvailabilityChecker      #   availability + waitForModel (polling)
-│   │   ├── SessionManager           #   LanguageModelSession nommées, multi-tours (actor isolé)
-│   │   ├── TextGenerationService    #   protocole ABSTRAIT → testable/substituable (mock)
-│   │   ├── StreamingService         #   streamResponse snapshots → flux unifié
-│   │   ├── GuidedGeneration         #   @Generable / GenerationSchema (vrai typage)
-│   │   └── ToolCalling              #   protocole Tool FoundationModels
-│   ├── ContextManager/              #   tokenCount/contextSize + stratégies
-│   │   └── ContextOverflowPolicy    #   .exceededContextWindowSize → erreur exploitable
-│   ├── Diagnostics/                 #   diagnostics() exhaustif
-│   ├── Observability/               #   latence, tokens, taux guardrail
-│   ├── Safety/                      #   niveau guardrail (--permissive) + logs
-│   └── Errors/                      #   erreurs typées + codes de sortie sémantiques (0–6)
+│   │   ├── SessionManager           #   named LanguageModelSession, multi-turn (isolated actor)
+│   │   ├── TextGenerationService    #   ABSTRACT protocol → testable/substitutable (mock)
+│   │   ├── StreamingService         #   streamResponse snapshots → unified stream
+│   │   ├── GuidedGeneration         #   @Generable / GenerationSchema (real typing)
+│   │   └── ToolCalling              #   FoundationModels Tool protocol
+│   ├── ContextManager/              #   tokenCount/contextSize + strategies
+│   │   └── ContextOverflowPolicy    #   .exceededContextWindowSize → usable error
+│   ├── Diagnostics/                 #   exhaustive diagnostics()
+│   ├── Observability/               #   latency, tokens, guardrail rate
+│   ├── Safety/                      #   guardrail level (--permissive) + logs
+│   └── Errors/                      #   typed errors + semantic exit codes (0–6)
 │
 ├── ProtocolAdapters/
-│   ├── MCPAdapter/                  #   SDK MCP Swift officiel — stdio + Streamable HTTP
+│   ├── MCPAdapter/                  #   official Swift MCP SDK — stdio + Streamable HTTP
 │   ├── OpenAIAdapter/               #   /v1/chat/completions, /v1/models, SSE
 │   ├── AnthropicAdapter/            #   /v1/messages, SSE
 │   ├── ConversionLayer/             #   Anthropic↔OpenAI ← golden tests
 │   ├── ACPAdapter/                  #   [v2] Zed Agent Client Protocol, JSON-RPC 2.0 / stdio
-│   └── WebSocketAdapter/            #   [v2] streaming bidirectionnel
+│   └── WebSocketAdapter/            #   [v2] bidirectional streaming
 │
 ├── TransportServer/                 # Hummingbird 2 (ServerTransport swift-openapi-generator)
 ├── ProxyMode/                       # ANTHROPIC_BASE_URL / OPENAI_BASE_URL passthrough
-├── FoundationBridgeCLI/             # exécutable (ArgumentParser + swift-service-lifecycle)
+├── FoundationBridgeCLI/             # executable (ArgumentParser + swift-service-lifecycle)
 └── Tests/                           # swift-testing / XCTest
 ```
 
-### Dépendances éprouvées (ne pas réinventer)
-- `modelcontextprotocol/swift-sdk` (MCP — **pré-1.0, isolé derrière un adaptateur**)
-- **Hummingbird 2** (serveur HTTP léger, Swift Concurrency natif) — **choix validé**
-- `swift-openapi-generator` 1.0 (contrat OpenAPI → serveur **et** clients)
+### Proven dependencies (do not reinvent)
+- `modelcontextprotocol/swift-sdk` (MCP — **pre-1.0, isolated behind an adapter**)
+- **Hummingbird 2** (lightweight HTTP server, native Swift Concurrency) — **validated choice**
+- `swift-openapi-generator` 1.0 (OpenAPI contract → server **and** clients)
 - `swift-service-lifecycle` · `swift-argument-parser`
 
-### SDK multi-langages — **OpenAPI-first**
-OpenAPI 3.1 = source de vérité unique → génère le **serveur Swift** + clients **TS** (`openapi-typescript`), **Python** (`openapi-python-client`), **Go** (`oapi-codegen`).
-**Synergie** : un `@Generable` (modèle) et un schéma OpenAPI (API) décrivent la **même** structure → constrained decoding fiable, cohérence end-to-end.
+### Multi-language SDKs — **OpenAPI-first**
+OpenAPI 3.1 = single source of truth → generates the **Swift server** + **TS** (`openapi-typescript`), **Python** (`openapi-python-client`), **Go** (`oapi-codegen`) clients.
+**Synergy**: a `@Generable` (model) and an OpenAPI schema (API) describe the **same** structure → reliable constrained decoding, end-to-end consistency.
 
 ---
 
-## 5. Mapping protocoles → cœur
+## 5. Protocol → core mapping
 
-| Protocole | Transport | Mapping `ModelService` | Vague |
+| Protocol | Transport | `ModelService` mapping | Wave |
 |---|---|---|---|
-| MCP | stdio + Streamable HTTP | respond exposé comme tool ; JSON Schema ↔ GenerationSchema ; snapshot → progress | **v1** |
-| REST OpenAI | HTTP + SSE | requête → prompt+instructions ; réponse → `choices`/`delta` | **v1** |
-| REST Anthropic | HTTP + SSE | requête → prompt ; réponse → content blocks ; `content_block_delta` | **v1** |
-| Conversion | interne | Anthropic↔OpenAI (messages, tool defs, events) — **golden tests** | **v1** |
-| Proxy | env var | `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` reroute local | **v1** |
-| CLI | stdin/pipe/args | prompt unique, chat, `-f`, sorties plain/JSON/quiet | **v1** |
+| MCP | stdio + Streamable HTTP | respond exposed as a tool ; JSON Schema ↔ GenerationSchema ; snapshot → progress | **v1** |
+| OpenAI REST | HTTP + SSE | request → prompt+instructions ; response → `choices`/`delta` | **v1** |
+| Anthropic REST | HTTP + SSE | request → prompt ; response → content blocks ; `content_block_delta` | **v1** |
+| Conversion | internal | Anthropic↔OpenAI (messages, tool defs, events) — **golden tests** | **v1** |
+| Proxy | env var | `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` local reroute | **v1** |
+| CLI | stdin/pipe/args | single prompt, chat, `-f`, plain/JSON/quiet outputs | **v1** |
 | ACP (Zed) | JSON-RPC 2.0 / stdio | `initialize`→availability ; `session/new`→session ; `session/prompt`→respond | **v2** |
-| WebSocket | WS | streaming bidirectionnel | **v2** |
+| WebSocket | WS | bidirectional streaming | **v2** |
 
-> ⚠️ **ACP = Zed Agent Client Protocol uniquement** (vivant). L'IBM/BeeAI « Agent Communication Protocol » est **archivé** (fusionné dans A2A) → **exclu**.
-
----
-
-## 6. Périmètre v1 (MVP) vs v2
-
-**v1 — cœur différenciant** : binding FM natif (availability + waitForModel + diagnostics) · texte **+ streaming snapshot** · sessions nommées multi-tours · **guided generation @Generable réelle** · tool calling · **REST OpenAI** · **REST Anthropic + conversion testée** · **proxy** · **MCP** stdio+HTTP · **CLI** + codes de sortie sémantiques · gestion contexte 4096 (`tokenCount`/`contextSize` + stratégie `strict` + overflow→HTTP) · cycle de vie robuste + erreurs typées · **CI macOS 26 + golden tests**.
-
-**v2 — extension & robustesse** : **ACP (Zed)** · WebSocket · stratégies contexte avancées · compaction tiérée · observabilité Prometheus + debug · `--permissive` + logs guardrail · **SDK TS/Python/Go publiés** · auth Bearer · sûreté fichiers/garde-fous · filtrage outils par catégorie · benchmarker intégré · **binaire signé/notarisé + Homebrew + releases taguées** · sessions persistées.
+> ⚠️ **ACP = Zed Agent Client Protocol only** (alive). The IBM/BeeAI "Agent Communication Protocol" is **archived** (merged into A2A) → **excluded**.
 
 ---
 
-## 7. Risques & mitigations
+## 6. v1 (MVP) scope vs v2
 
-| # | Risque | Mitigation |
+**v1 — differentiating core**: native FM binding (availability + waitForModel + diagnostics) · text **+ snapshot streaming** · named multi-turn sessions · **real @Generable guided generation** · tool calling · **OpenAI REST** · **Anthropic REST + tested conversion** · **proxy** · **MCP** stdio+HTTP · **CLI** + semantic exit codes · 4096 context management (`tokenCount`/`contextSize` + `strict` strategy + overflow→HTTP) · robust lifecycle + typed errors · **macOS 26 CI + golden tests**.
+
+**v2 — extension & robustness**: **ACP (Zed)** · WebSocket · advanced context strategies · tiered compaction · Prometheus + debug observability · `--permissive` + guardrail logs · **published TS/Python/Go SDKs** · Bearer auth · file safety/guardrails · per-category tool filtering · built-in benchmarker · **signed/notarized binary + Homebrew + tagged releases** · persisted sessions.
+
+---
+
+## 7. Risks & mitigations
+
+| # | Risk | Mitigation |
 |---|---|---|
-| R1 | Fenêtre **4096 tokens** (limite dure Apple) | `tokenCount`/`contextSize`, trimming, stratégies, overflow→HTTP ; documenter does/doesn't |
-| R2 | Verrouillage plateforme (macOS 26 + Apple Silicon + AI) | Assumé ; availability check clair ; doc d'éligibilité |
-| R3 | SDK MCP Swift **pré-1.0** + FM récent | Isoler derrière adaptateur + `TextGenerationService` abstrait ; épingler versions |
-| R4 | Conversion SSE Anthropic↔OpenAI fragile | **Golden tests** ; tokenizer **exact** Apple (pas cl100k_base) |
-| R5 | `LanguageModelSession` non parallèle | **Actor isolé** par session ; pas de busy-wait |
-| R6 | Guardrails bloquent prompts bénins | `--permissive` + logs ; refus → erreur actionnable |
-| R7 | Confusion ACP Zed vs IBM (archivé) | Cibler **uniquement Zed ACP** |
-| R8 | Glue multi-protocole | OpenAPI-first, séparation stricte, CI dès le départ |
-| R10 | Over-engineering / bus factor | Réutiliser libs officielles |
+| R1 | **4096-token** window (Apple hard limit) | `tokenCount`/`contextSize`, trimming, strategies, overflow→HTTP ; document does/doesn't |
+| R2 | Platform lock-in (macOS 26 + Apple Silicon + AI) | Accepted ; clear availability check ; eligibility doc |
+| R3 | **Pre-1.0** Swift MCP SDK + recent FM | Isolate behind adapter + abstract `TextGenerationService` ; pin versions |
+| R4 | Fragile Anthropic↔OpenAI SSE conversion | **Golden tests** ; **exact** Apple tokenizer (not cl100k_base) |
+| R5 | `LanguageModelSession` not parallel | **Isolated actor** per session ; no busy-wait |
+| R6 | Guardrails block benign prompts | `--permissive` + logs ; refusal → actionable error |
+| R7 | Zed ACP vs IBM (archived) confusion | Target **Zed ACP only** |
+| R8 | Multi-protocol glue | OpenAPI-first, strict separation, CI from the start |
+| R10 | Over-engineering / bus factor | Reuse official libraries |
 
 ---
 
-## 8. Stratégie de tests (TDD)
+## 8. Test strategy (TDD)
 
-1. **Unitaires du cœur** via `TextGenerationService` (mock), **sans** charger FoundationModels.
-2. **Golden tests de conversion (priorité absolue)** — traces SSE réelles Anthropic/OpenAI.
-3. **Contrat OpenAPI** — réponses conformes au schéma.
-4. **Intégration par protocole** — un harnais par adaptateur ; CLI : assertions sur codes de sortie.
-5. **E2E sur device réel** (CI macOS 26) — vrai FoundationModels.
-6. **Concurrence** — sérialisation par actor.
-7. **Cycle de vie** — SIGTERM/SIGINT → arrêt gracieux.
+1. **Core unit tests** via `TextGenerationService` (mock), **without** loading FoundationModels.
+2. **Conversion golden tests (top priority)** — real Anthropic/OpenAI SSE traces.
+3. **OpenAPI contract** — schema-conformant responses.
+4. **Per-protocol integration** — one harness per adapter ; CLI: exit-code assertions.
+5. **E2E on real device** (macOS 26 CI) — real FoundationModels.
+6. **Concurrency** — actor serialization.
+7. **Lifecycle** — SIGTERM/SIGINT → graceful shutdown.
 
-**Boucle** : Red → Green → Refactor. CI obligatoire dès le 1er commit.
+**Loop**: Red → Green → Refactor. CI mandatory from the 1st commit.
 
-> Honnêteté (§29/§32) : les chemins e2e nécessitant Apple Intelligence ne sont déclarés « verts » que sur device réel éligible. Tout statut non vérifié → `[NON TESTÉ — device requis]`.
+> Honesty (§29/§32): e2e paths requiring Apple Intelligence are only declared "green" on a real eligible device. Any unverified status → `[NOT TESTED — device required]`.
 
 ---
 
-## 9. Sources (recherche 2026-06-04, 12 agents)
+## 9. Sources (research 2026-06-04, 12 agents)
 
-Projets : phimage/mcp-foundation-models · Arthur-Ficial/apfel · waybarrios/vllm-mlx · macOS26/Agent · deckameron/Ti.Apple.Intelligence · ModelPiper/ToolPiper · CaistsAI/claude-local-proxy.
-Protocoles : MCP (spec 2025-11-25, swift-sdk v0.11.x Tier 3) · Zed ACP (vivant) vs IBM/BeeAI ACP (archivé→A2A) · REST OpenAI/Anthropic + proxy · Hummingbird 2 / swift-openapi-generator 1.0 / FoundationModels.
+Projects: phimage/mcp-foundation-models · Arthur-Ficial/apfel · waybarrios/vllm-mlx · macOS26/Agent · deckameron/Ti.Apple.Intelligence · ModelPiper/ToolPiper · CaistsAI/claude-local-proxy.
+Protocols: MCP (spec 2025-11-25, swift-sdk v0.11.x Tier 3) · Zed ACP (alive) vs IBM/BeeAI ACP (archived→A2A) · OpenAI/Anthropic REST + proxy · Hummingbird 2 / swift-openapi-generator 1.0 / FoundationModels.
 
-`[À VÉRIFIER]` : perf Hummingbird ~2× Vapor ; valeur exacte 4096 tokens (TN3193 non extrait) — à confirmer avant inscription comme faits dans le README public.
+`[TO VERIFY]`: Hummingbird perf ~2× Vapor ; exact 4096-token value (TN3193 not extracted) — to confirm before stating as fact in the public README.

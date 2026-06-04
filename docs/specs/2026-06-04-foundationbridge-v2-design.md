@@ -1,172 +1,173 @@
-# FoundationBridge — Design v2 « le pont le plus complet »
+# FoundationBridge — v2 design "the most complete bridge"
 
-> **Statut** : ✅ **v2-MVP implémenté** (2026-06-04) — SessionManager, MCP stdio, snapshot
-> streaming, auth Bearer, port 11434, durcissement serveur et tests d'intégration livrés
-> (57 tests verts). Reste v2.1 : `generate_structured`, MCP Streamable-HTTP, ACP, WebSocket, SDKs.
-> **Auteur** : Aïssa BELKOUSSA
-> **Date** : 2026-06-04
-> **Portée** : extension de la v1 (serveur fonctionnel) vers un pont multi-protocoles / multi-langages.
-> **Méthode** : issu d'une recherche multi-agents (teardown de 7 concurrents + recherche de 7 protocoles + critique adversariale de complétude), recadrée sur le code v1 réel.
+🇬🇧 **English** · 🇫🇷 [Français](2026-06-04-foundationbridge-v2-design.fr.md)
+
+> **Status**: ✅ **v2-MVP implemented** (2026-06-04) — SessionManager, MCP stdio, snapshot
+> streaming, Bearer auth, port 11434, server hardening and integration tests shipped
+> (57 tests passing). Remaining for v2.1: `generate_structured`, MCP Streamable-HTTP, ACP, WebSocket, SDKs.
+> **Author**: Aïssa BELKOUSSA · **Date**: 2026-06-04
+> **Scope**: extension of v1 (working server) toward a multi-protocol / multi-language bridge.
+> **Method**: derived from multi-agent research (teardown of 7 competitors + 7 protocols + adversarial completeness critique), reframed against the real v1 code.
 
 ---
 
-## 0. Point de départ réel (v1, vérifié dans le code)
+## 0. Real starting point (v1, verified in code)
 
-| Élément | État vérifié |
+| Item | Verified state |
 |---|---|
-| Mapping `SystemLanguageModel.availability` (enum) → `ModelAvailability` | ✅ déjà correct (`FoundationModelsGenerator.modelAvailability()`) |
-| Génération non-stream | ✅ `respond()` — **mais crée une `LanguageModelSession` neuve à chaque appel = stateless** |
-| Streaming | ⚠️ `stream()` est un **repli mono-bloc** (yield du texte complet) — le vrai snapshot streaming n'est pas branché |
-| Comptage tokens | ⚠️ `HeuristicTokenEstimator` ~4 char/token, pas le tokenizer exact d'Apple |
-| Serveur HTTP | ✅ Hummingbird 2, REST OpenAI + Anthropic + SSE, bind `127.0.0.1` par défaut |
-| Authentification | ❌ absente |
-| SessionManager | ❌ absent (chaque requête est isolée) |
-| Sécurité | ✅ validation entrées, header `X-Content-Type-Options: nosniff`, limite corps 1 Mio |
+| `SystemLanguageModel.availability` (enum) → `ModelAvailability` mapping | ✅ already correct (`FoundationModelsGenerator.modelAvailability()`) |
+| Non-stream generation | ✅ `respond()` — **but creates a fresh `LanguageModelSession` on every call = stateless** |
+| Streaming | ⚠️ `stream()` is a **mono-block fallback** (yields the full text) — real snapshot streaming not wired |
+| Token counting | ⚠️ `HeuristicTokenEstimator` ~4 chars/token, not Apple's exact tokenizer |
+| HTTP server | ✅ Hummingbird 2, OpenAI + Anthropic REST + SSE, default bind `127.0.0.1` |
+| Authentication | ❌ absent |
+| SessionManager | ❌ absent (each request is isolated) |
+| Security | ✅ input validation, `X-Content-Type-Options: nosniff` header, 1 MiB body limit |
 
-**Conséquence** : la v2 n'invente rien depuis zéro — elle **corrige** (streaming, stateless) et **ajoute** (MCP, sessions, auth, SDKs).
-
----
-
-## A. Résumé d'architecture
-
-FoundationBridge applique « **un cœur, plusieurs façades** » : le binding FoundationModels reste isolé derrière le protocole `TextGenerating`, et chaque protocole externe (REST OpenAI, REST Anthropic, **MCP stdio**, ACP, WebSocket) est un **adaptateur mince** au-dessus d'un **`SessionManager` actor** qui possède les `LanguageModelSession` vivantes. La v2 ajoute trois capacités transverses — **sessions nommées en mémoire**, **streaming par snapshots réel**, **authentification Bearer optionnelle** — puis un premier nouvel adaptateur à forte valeur (**MCP stdio**, qui débloque Claude Desktop/Code, Cursor, Zed sans aucun changement côté client). Tout le reste (ACP, WebSocket, gRPC, SDKs publiés) est séquencé en v2.1+ selon une discipline YAGNI stricte.
+**Consequence**: v2 invents nothing from scratch — it **fixes** (streaming, stateless) and **adds** (MCP, sessions, auth, SDKs).
 
 ---
 
-## B. Décomposition en modules
+## A. Architecture summary
 
-| Module | Rôle | Langage | Dépend de | Nouveau ? |
+FoundationBridge applies "**one core, many façades**": the FoundationModels binding stays isolated behind the `TextGenerating` protocol, and each external protocol (OpenAI REST, Anthropic REST, **MCP stdio**, ACP, WebSocket) is a **thin adapter** on top of a **`SessionManager` actor** that owns the live `LanguageModelSession` objects. v2 adds three cross-cutting capabilities — **named in-memory sessions**, **real snapshot streaming**, **optional Bearer authentication** — then a first high-value new adapter (**MCP stdio**, which unlocks Claude Desktop/Code, Cursor, Zed with no client-side change). Everything else (ACP, WebSocket, gRPC, published SDKs) is sequenced into v2.1+ under strict YAGNI discipline.
+
+---
+
+## B. Module decomposition
+
+| Module | Role | Language | Depends on | New? |
 |---|---|---|---|---|
-| `FoundationBridgeCore` | Erreurs, `ModelAvailability`, `TextGenerating`, `GenerationOptions`, `ContextManager`, `TokenEstimating`, `ExitCode` | Swift | — | existant |
-| **`FoundationBridgeSession`** | `SessionManager` **actor** : map `sessionId → LanguageModelSession`, file d'attente par session, cap global de concurrence, TTL/éviction | Swift | Core | **nouveau** |
-| `ProtocolConversion` | Modèles OpenAI ↔ Anthropic, conversion, validation, build réponse | Swift | Core | existant |
-| **`MCPAdapter`** | Serveur MCP **stdio** (JSON-RPC) : outils `generate`, `generate_structured`, `list_models` | Swift | Core, Session | **nouveau** |
-| `FoundationModelsBackend` | Binding réel + **vrai snapshot streaming** (`streamResponse`) | Swift | Core | étendu |
-| `FoundationBridgeServer` | Hummingbird : REST + SSE + **middleware Auth** | Swift | Core, Session, Conversion, Backend | étendu |
-| `FoundationBridgeCLI` | `version/diagnose/generate/serve` + **`mcp`** (lance l'adaptateur stdio) + `--token`, `--host` | Swift | tous | étendu |
+| `FoundationBridgeCore` | Errors, `ModelAvailability`, `TextGenerating`, `GenerationOptions`, `ContextManager`, `TokenEstimating`, `ExitCode` | Swift | — | existing |
+| **`FoundationBridgeSession`** | `SessionManager` **actor**: `sessionId → LanguageModelSession` map, per-session queue, global concurrency cap, TTL/eviction | Swift | Core | **new** |
+| `ProtocolConversion` | OpenAI ↔ Anthropic models, conversion, validation, response build | Swift | Core | existing |
+| **`MCPAdapter`** | **stdio** MCP server (JSON-RPC): `generate`, `generate_structured`, `list_models` tools | Swift | Core, Session | **new** |
+| `FoundationModelsBackend` | Real binding + **real snapshot streaming** (`streamResponse`) | Swift | Core | extended |
+| `FoundationBridgeServer` | Hummingbird: REST + SSE + **Auth middleware** | Swift | Core, Session, Conversion, Backend | extended |
+| `FoundationBridgeCLI` | `version/diagnose/generate/serve` + **`mcp`** (launches the stdio adapter) + `--token`, `--host` | Swift | all | extended |
 
-> Le produit SwiftPM `FoundationBridgeCore` (déjà déclaré `.library`) reste l'unique surface embarquable pour apps natives macOS/iOS.
-
----
-
-## C. Flux de données (deux chemins distincts)
-
-**Texte libre (chemin MVP)** :
-`client (REST/MCP) → adaptateur → SessionManager.session(for: id) → LanguageModelSession.streamResponse(to:) → snapshots cumulatifs → delta = snapshot.dropFirst(préfixe précédent) → chunk wire (SSE/MCP)`.
-
-**Sortie structurée `@Generable` (chemin v2.1)** :
-les snapshots sont des `PartiallyGenerated<T>` (champs tous optionnels) — **on ne peut PAS faire un delta suffixe de chaîne**. On émet une **émission JSON partielle au niveau champ** (diff de l'objet partiel), ou on bufferise jusqu'au `final` selon le protocole. Endpoint dédié `generate_structured` (schéma `@Generable` **pré-enregistré**, pas arbitraire au runtime — `[À VÉRIFIER]` : extraction du JSON Schema depuis la macro).
+> The `FoundationBridgeCore` SwiftPM product (already declared as `.library`) remains the only embeddable surface for native macOS/iOS apps.
 
 ---
 
-## D. Surface protocolaire (priorisée, YAGNI)
+## C. Data flow (two distinct paths)
 
-| Surface | Adaptateur | Priorité | Justification |
+**Free text (MVP path)**:
+`client (REST/MCP) → adapter → SessionManager.session(for: id) → LanguageModelSession.streamResponse(to:) → cumulative snapshots → delta = snapshot.dropFirst(previous prefix) → wire chunk (SSE/MCP)`.
+
+**Structured `@Generable` output (v2.1 path)**:
+snapshots are `PartiallyGenerated<T>` (all-Optional fields) — you **CANNOT** compute a string-suffix delta. Emit **field-level partial JSON** (diff of the partial object), or buffer until `final` depending on the protocol. Dedicated `generate_structured` endpoint (**pre-registered** `@Generable` schema, not arbitrary at runtime — `[TO VERIFY]`: extracting the JSON Schema from the macro).
+
+---
+
+## D. Protocol surface (prioritized, YAGNI)
+
+| Surface | Adapter | Priority | Rationale |
 |---|---|---|---|
-| REST OpenAI + SSE | `FoundationBridgeServer` | ✅ v1 | déjà livré, débloque tout SDK OpenAI par swap `base_url` |
-| REST Anthropic + SSE | `FoundationBridgeServer` | ✅ v1 | déjà livré, débloque Claude Code via `ANTHROPIC_BASE_URL` |
-| **MCP stdio** | `MCPAdapter` | **v2-MVP** | unique plus forte valeur : Claude Desktop/Code, Cursor, Zed en `claude mcp add` |
-| MCP Streamable-HTTP | `MCPAdapter` | v2.1 | clients MCP web/distants |
-| WebSocket | nouveau | v2.1 | streaming full-duplex, apps Tauri/Electron |
-| ACP (Zed/JetBrains) | nouveau | v2.1 | écosystème éditeurs agentiques |
-| Unix domain socket | `FoundationBridgeServer` | v2.1 | IPC local faible latence, sans port |
-| gRPC | — | **coupé** | YAGNI : audience service-mesh inexistante pour un modèle mono-utilisateur on-device ; à rouvrir seulement sur demande réelle |
+| OpenAI REST + SSE | `FoundationBridgeServer` | ✅ v1 | already shipped, unlocks any OpenAI SDK via `base_url` swap |
+| Anthropic REST + SSE | `FoundationBridgeServer` | ✅ v1 | already shipped, unlocks Claude Code via `ANTHROPIC_BASE_URL` |
+| **MCP stdio** | `MCPAdapter` | **v2-MVP** | single highest value: Claude Desktop/Code, Cursor, Zed via `claude mcp add` |
+| MCP Streamable-HTTP | `MCPAdapter` | v2.1 | web/remote MCP clients |
+| WebSocket | new | v2.1 | full-duplex streaming, Tauri/Electron apps |
+| ACP (Zed/JetBrains) | new | v2.1 | agentic editor ecosystem |
+| Unix domain socket | `FoundationBridgeServer` | v2.1 | low-latency local IPC, no port |
+| gRPC | — | **cut** | YAGNI: no service-mesh audience for a single-user on-device model ; reopen only on real demand |
 
 ---
 
-## E. Mapping disponibilité → erreur (par protocole)
+## E. Availability → error mapping (per protocol)
 
-| `ModelAvailability` | REST OpenAI | REST Anthropic | MCP | CLI exit |
+| `ModelAvailability` | OpenAI REST | Anthropic REST | MCP | CLI exit |
 |---|---|---|---|---|
-| `.available` | 200 | 200 | résultat outil | 0 |
-| `.deviceNotEligible` | 503 + message | error envelope | erreur init/outil | code dédié |
-| `.appleIntelligenceNotEnabled` | 503 + remède | error envelope | erreur + remède | code dédié |
-| `.modelNotReady` (téléchargement) | **503 + `Retry-After`** | error + retry | erreur transitoire **retryable** | code dédié |
-| `.unknown` | 500 | error envelope | erreur générique | code dédié |
+| `.available` | 200 | 200 | tool result | 0 |
+| `.deviceNotEligible` | 503 + message | error envelope | init/tool error | dedicated code |
+| `.appleIntelligenceNotEnabled` | 503 + remedy | error envelope | error + remedy | dedicated code |
+| `.modelNotReady` (downloading) | **503 + `Retry-After`** | error + retry | **retryable** transient error | dedicated code |
+| `.unknown` | 500 | error envelope | generic error | dedicated code |
 
-> Le `.modelNotReady` est **transitoire** : chemin de poll/retry exposé (ne jamais traiter comme erreur définitive). Mapping déjà amorcé par `asErrorIfUnavailable()` + `BridgeError.httpStatus`.
-
----
-
-## F. Concurrence & sessions
-
-- **`SessionManager` actor** : `sessionId → LanguageModelSession`. Sessions **en mémoire, durée de vie du process** (multi-tours réel).
-- **Une requête en vol par session** (miroir de `isResponding` de FoundationModels) : requêtes concurrentes sur la **même** session → **mises en file** (ou rejet `409` configurable), jamais exécutées en parallèle.
-- **Cap global de concurrence** configurable (sémaphore) pour borner la pression sur le Neural Engine.
-- **Persistance disque inter-redémarrage** : `[À VÉRIFIER]` — `LanguageModelSession` n'est pas documentée comme sérialisable. **On ne promet PAS** la persistance ; repli éventuel = **rejeu de transcript** (réinjecter l'historique de messages dans une session neuve). Le différenciateur « sessions nommées » est défini comme **in-process**, pas cross-restart.
+> `.modelNotReady` is **transient**: a poll/retry path is exposed (never treat it as a final error). Mapping already seeded by `asErrorIfUnavailable()` + `BridgeError.httpStatus`.
 
 ---
 
-## G. Comptage tokens & dépassement (fenêtre 4096)
+## F. Concurrency & sessions
 
-- Garder `HeuristicTokenEstimator` (~4 char/token) comme **repli portable** (tests, hors-device).
-- Backend réel : tenter le **tokenizer exact d'Apple** si exposé `[À VÉRIFIER]` ; sinon heuristique + **marge de sécurité** (ex. 90 % de 4096).
-- **Pré-flight** avant appel modèle : si `instructions + prompt` estimés > seuil → erreur **claire** par protocole (OpenAI 400 `context_length_exceeded`, Anthropic error envelope, MCP erreur outil), **avant** l'échec opaque du modèle.
+- **`SessionManager` actor**: `sessionId → LanguageModelSession`. Sessions are **in-memory, process-lifetime** (real multi-turn).
+- **One in-flight request per session** (mirrors FoundationModels' `isResponding`): concurrent requests on the **same** session are **queued** (or `409` rejected, configurable), never run in parallel.
+- **Global concurrency cap** (semaphore) to bound pressure on the Neural Engine.
+- **Cross-restart disk persistence**: `[TO VERIFY]` — `LanguageModelSession` is not documented as serializable. We **do NOT promise** persistence; possible fallback = **transcript replay** (re-inject message history into a fresh session). The "named sessions" differentiator is defined as **in-process**, not cross-restart.
+
+---
+
+## G. Token counting & overflow (4096 window)
+
+- Keep `HeuristicTokenEstimator` (~4 chars/token) as a **portable fallback** (tests, off-device).
+- Real backend: try Apple's **exact tokenizer** if exposed `[TO VERIFY]`; otherwise heuristic + **safety margin** (e.g. 90% of 4096).
+- **Pre-flight** before the model call: if estimated `instructions + prompt` > threshold → **clear** per-protocol error (OpenAI 400 `context_length_exceeded`, Anthropic error envelope, MCP tool error), **before** the model's opaque failure.
 
 ---
 
 ## H. Auth / binding / sandbox / distribution
 
-- **Bind `127.0.0.1` par défaut** (déjà le cas). `--host 0.0.0.0` (LAN/tunnel) **exige** un token.
-- **Bearer optionnel** : `--token <valeur>` ou env `FB_TOKEN` ; middleware Hummingbird vérifie `Authorization: Bearer …` (et `x-api-key` côté Anthropic). Absence de token + bind localhost = ouvert (ergonomie locale) ; documenté explicitement.
-- **Non-sandboxé** : distribution **Homebrew / build-from-source / Swift Package Index**. **App Store de-scopé** (sandbox vs bind de port arbitraire = conflit irréductible).
+- **Bind `127.0.0.1` by default** (already the case). `--host 0.0.0.0` (LAN/tunnel) **requires** a token.
+- **Optional Bearer**: `--token <value>` or env `FB_TOKEN`; Hummingbird middleware checks `Authorization: Bearer …` (and `x-api-key` for Anthropic). No token + localhost bind = open (local ergonomics); explicitly documented.
+- **Non-sandboxed**: distribution via **Homebrew / build-from-source / Swift Package Index**. **App Store de-scoped** (sandbox vs arbitrary port binding = irreducible conflict).
 
 ---
 
-## I. Périmètre iOS / visionOS
+## I. iOS / visionOS scope
 
-- **Serveur de-scopé sur iOS** : un démon HTTP de fond ne transfère pas depuis le modèle « daemon macOS ».
-- **iOS reste servi** uniquement par le **produit SwiftPM `FoundationBridgeCore`** embarqué in-process. On cesse de présenter iOS comme un différenciateur serveur.
-
----
-
-## J. Stratégie de tests
-
-- **Frontière CI sans Apple Intelligence** : tout le transport teste contre `MockTextGenerator` (déjà présent) → CI GitHub Actions verte sans matériel.
-- **Golden files** : SSE OpenAI/Anthropic (déjà amorcé) + **golden framing MCP** (JSON-RPC) + golden conversion.
-- **Smoke sur vrai device** (macOS 26 + Apple Intelligence) : job manuel/optionnel, jamais bloquant en CI.
-- **Tests de concurrence** : file d'attente par session, cap global.
+- **Server de-scoped on iOS**: a background HTTP daemon does not transfer from the "macOS daemon" model.
+- **iOS is served** only by the embeddable **`FoundationBridgeCore` SwiftPM product**, in-process. We stop presenting iOS as a server differentiator.
 
 ---
 
-## K. Plan SDK (« le protocole EST le SDK »)
+## J. Test strategy
 
-- **MVP first-class** : **Swift** (`FoundationBridgeCore` SwiftPM — typage `@Generable`, in-process/stdio, le seul sans round-trip réseau).
-- **Guides `base_url`** au MVP (zéro code) : Python (`openai`/`anthropic`), Node, Go (`go-openai`), Rust (`async-openai`), Bash/curl — lab exécutable façon apfel.
-- **TypeScript/Node** : **rétrogradé en guide au MVP**, **SDK fin en v2.1** (un SDK npm first-class réintroduit une dépendance Node qui casse le récit « pure native » ; on attend le gel des contrats).
-- **Contrats gelés + `/v1/openapi.json` vivant** avant tout SDK → wrappers fins auto-générables. Ruby/Kotlin = guides « plus tard ».
-
----
-
-## L. Feuille de route séquencée
-
-**v2-MVP** (cœur du « pont le plus complet », mappe les tâches pending) :
-1. `SessionManager` actor (sessions nommées in-process) — *tâche #3*
-2. **Vrai snapshot streaming** via `streamResponse` (delta suffixe texte) — *tâche #2*
-3. **Adaptateur MCP stdio** (`generate`, `list_models`) + commande CLI `mcp` — *tâche #5*
-4. **Auth Bearer optionnelle** (`--token`/`FB_TOKEN`, `--host`) — *tâche #6*
-5. Revue de code serveur (concurrence, erreurs silencieuses) — *tâche #9*
-6. Tests d'intégration + golden MCP/SSE — *tâche #10*
-7. README : matrice protocoles à jour + snippets par client (Claude Code/Desktop, Cursor, Zed)
-
-**v2.1** : endpoint `generate_structured` (`@Generable`→JSON Schema), MCP Streamable-HTTP, WebSocket, Unix socket, SDK TS fin, guides multi-langages publiés.
-
-**Plus tard** : ACP (Zed/JetBrains), Homebrew tap + binaire notarisé, observabilité Prometheus, (gRPC seulement si demande réelle).
+- **CI boundary without Apple Intelligence**: all transport tests against `MockTextGenerator` (already present) → green GitHub Actions CI with no hardware.
+- **Golden files**: OpenAI/Anthropic SSE (already seeded) + **MCP framing** (JSON-RPC) + conversion golden.
+- **Real-device smoke** (macOS 26 + Apple Intelligence): manual/optional job, never CI-blocking.
+- **Concurrency tests**: per-session queue, global cap.
 
 ---
 
-## Décisions ouvertes (à trancher avec l'auteur)
+## K. SDK plan ("the protocol IS the SDK")
 
-1. **Licence** : la v1 est déjà publiée en **Apache-2.0** (badge + LICENSE commités). La recherche recommandait MIT (parité avec les concurrents). → **Garder Apache-2.0** (déjà engagé, clause brevets rassurante) sauf décision explicite de bascule. *Aucun changement de licence sans ton accord.*
-2. **Port par défaut** : v1 = `8080`. Faut-il aligner sur `11434` (convention Ollama, ergonomie « ça marche tout de suite » pour les outils) ?
-3. **Périmètre du premier increment** : tout le v2-MVP d'un coup, ou MCP stdio seul d'abord (livraison la plus rapide du chaînon « Claude ↔ IA Apple ») ?
+- **MVP first-class**: **Swift** (`FoundationBridgeCore` SwiftPM — `@Generable` typing, in-process/stdio, the only one without a network round-trip).
+- **`base_url` GUIDES** at MVP (zero code): Python (`openai`/`anthropic`), Node, Go (`go-openai`), Rust (`async-openai`), Bash/curl — runnable lab, apfel-style.
+- **TypeScript/Node**: **demoted to a guide at MVP**, **thin SDK in v2.1** (a first-class npm SDK reintroduces a Node dependency that breaks the "pure native" story; wait for the contracts to freeze).
+- **Frozen contracts + live `/v1/openapi.json`** before any SDK → thin auto-generatable wrappers. Ruby/Kotlin = "later" guides.
 
 ---
 
-## Risques / points `[À VÉRIFIER]` (§29)
+## L. Sequenced roadmap
 
-- Sérialisation/reprise de `LanguageModelSession` sur disque — **non promis**.
-- Extraction du JSON Schema d'une macro `@Generable` au runtime — conditionne `generate_structured`.
-- Tokenizer exact d'Apple exposé ou non.
-- Appels d'outils parallèles vs séquentiels côté FoundationModels.
-- Support vision/multimodal (content-blocks image OpenAI/Anthropic).
+**v2-MVP** (heart of "the most complete bridge", maps the pending tasks):
+1. `SessionManager` actor (in-process named sessions)
+2. **Real snapshot streaming** via `streamResponse` (text suffix delta)
+3. **MCP stdio adapter** (`generate`, `list_models`) + CLI `mcp` command
+4. **Optional Bearer auth** (`--token`/`FB_TOKEN`, `--host`)
+5. Server code review (concurrency, silent failures)
+6. Integration tests + MCP/SSE golden
+7. README: up-to-date protocol matrix + per-client snippets (Claude Code/Desktop, Cursor, Zed)
+
+**v2.1**: `generate_structured` endpoint (`@Generable`→JSON Schema), MCP Streamable-HTTP, WebSocket, Unix socket, thin TS SDK, published multi-language guides.
+
+**Later**: ACP (Zed/JetBrains), Homebrew tap + notarized binary, Prometheus observability, (gRPC only on real demand).
+
+---
+
+## Open decisions (to settle with the author)
+
+1. **License**: v1 is already published under **Apache-2.0** (badge + committed LICENSE). Research recommended MIT (parity with competitors). → **Keep Apache-2.0** (already committed, reassuring patent clause) unless explicitly switched. *No license change without your approval.*
+2. **Default port**: v1 = `8080`. Should it align on `11434` (Ollama convention, "it just works" ergonomics for tools)? — **Done: 11434.**
+3. **First increment scope**: the whole v2-MVP at once, or MCP stdio alone first (fastest delivery of the "Claude ↔ Apple AI" link)? — **Done: full v2-MVP.**
+
+---
+
+## Risks / `[TO VERIFY]` items (§29)
+
+- Serializing/resuming `LanguageModelSession` to disk — **not promised**.
+- Extracting the JSON Schema from a `@Generable` macro at runtime — gates `generate_structured`.
+- Apple's exact tokenizer exposed or not.
+- Parallel vs sequential tool calls in FoundationModels.
+- Vision/multimodal support (OpenAI/Anthropic image content blocks).

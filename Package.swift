@@ -3,14 +3,16 @@ import PackageDescription
 
 let package = Package(
     name: "FoundationBridge",
-    // Universal : le binaire cible Apple Silicon (arm64) ET Intel/Rosetta (x86_64).
-    // FoundationModelsBackend reste gardé par disponibilité (macOS 26 + device éligible).
     platforms: [.macOS(.v15)],
     products: [
         .library(name: "FoundationBridgeCore", targets: ["FoundationBridgeCore"]),
         .library(name: "ProtocolConversion", targets: ["ProtocolConversion"]),
         .library(name: "FoundationModelsBackend", targets: ["FoundationModelsBackend"]),
+        .library(name: "FoundationBridgeServer", targets: ["FoundationBridgeServer"]),
         .executable(name: "foundationbridge", targets: ["FoundationBridgeCLI"]),
+    ],
+    dependencies: [
+        .package(url: "https://github.com/hummingbird-project/hummingbird.git", from: "2.0.0"),
     ],
     targets: [
         .target(name: "FoundationBridgeCore"),
@@ -30,9 +32,23 @@ let package = Package(
             name: "FoundationModelsBackend",
             dependencies: ["FoundationBridgeCore"]
         ),
+        .target(
+            name: "FoundationBridgeServer",
+            dependencies: [
+                "FoundationBridgeCore",
+                "ProtocolConversion",
+                "FoundationModelsBackend",
+                .product(name: "Hummingbird", package: "hummingbird"),
+            ]
+        ),
         .executableTarget(
             name: "FoundationBridgeCLI",
-            dependencies: ["FoundationBridgeCore", "ProtocolConversion", "FoundationModelsBackend"]
+            dependencies: [
+                "FoundationBridgeCore",
+                "ProtocolConversion",
+                "FoundationModelsBackend",
+                "FoundationBridgeServer",
+            ]
         ),
     ]
 )

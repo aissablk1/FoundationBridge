@@ -3,13 +3,14 @@
 
 # FoundationBridge
 
-**Une passerelle native qui expose le LLM on-device d'Apple (FoundationModels) à tout l'écosystème agentique — REST OpenAI, REST Anthropic, SSE, CLI, proxy — depuis un seul binaire Swift.**
+**Une passerelle native qui expose le LLM on-device d'Apple (FoundationModels) à tout l'écosystème agentique — MCP, REST OpenAI, REST Anthropic, SSE, CLI, proxy — depuis un seul binaire Swift.**
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-macOS%2026%20·%20Apple%20Silicon-black.svg)]()
-[![Status](https://img.shields.io/badge/status-v1%20—%20serveur%20fonctionnel-brightgreen.svg)]()
+[![Platform](https://img.shields.io/badge/platform-macOS%2026%20·%20Apple%20Silicon-black.svg)](#prérequis)
+[![Status](https://img.shields.io/badge/status-v2--MVP-brightgreen.svg)](#feuille-de-route)
+[![Tests](https://img.shields.io/badge/tests-57%20✓-brightgreen.svg)](#architecture)
 
-[Dépôt GitHub](https://github.com/aissablk1/FoundationBridge)
+[![Démarrage rapide](https://img.shields.io/badge/▶_Démarrage_rapide-2ea44f?style=for-the-badge)](#démarrage-rapide)
 
 </div>
 

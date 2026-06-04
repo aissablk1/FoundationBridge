@@ -163,6 +163,20 @@ Universal binary (arm64 + x86_64): `./scripts/build-universal.sh`.
 
 ---
 
+## 📚 References — official Apple documentation
+
+- [Foundation Models framework](https://developer.apple.com/documentation/FoundationModels) — the on-device model for language understanding, structured output and tool calling
+- [Generating content and performing tasks](https://developer.apple.com/documentation/FoundationModels/generating-content-and-performing-tasks-with-foundation-models)
+- [Adding intelligent app features with generative models](https://developer.apple.com/documentation/foundationmodels/adding-intelligent-app-features-with-generative-models) — guided generation & tool calling
+- [`SystemLanguageModel`](https://developer.apple.com/documentation/foundationmodels/systemlanguagemodel) — model availability & the on-device model
+- [TN3193 — Managing the on-device model's context window](https://developer.apple.com/documentation/technotes/tn3193-managing-the-on-device-foundation-model-s-context-window) — the ~4096-token budget
+- [Loading and using a custom adapter](https://developer.apple.com/documentation/foundationmodels/loading-and-using-a-custom-adapter-with-foundation-models)
+- WWDC25 videos: [Meet the Foundation Models framework](https://developer.apple.com/videos/play/wwdc2025/286/) · [Deep dive into the Foundation Models framework](https://developer.apple.com/videos/play/wwdc2025/301/) · [Code-along: bring on-device AI to your app](https://developer.apple.com/videos/play/wwdc2025/259/)
+
+Related (non-Apple): [MCP Swift SDK](https://github.com/modelcontextprotocol/swift-sdk) · [Hummingbird](https://github.com/hummingbird-project/hummingbird).
+
+---
+
 ## 🤝 Contributing
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md). Contributions are welcome, especially on conversion golden tests and protocol adapters.

@@ -1,6 +1,8 @@
 # FoundationBridge — Design v2 « le pont le plus complet »
 
-> **Statut** : proposition de design, en attente de validation (HARD-GATE pipeline §30).
+> **Statut** : ✅ **v2-MVP implémenté** (2026-06-04) — SessionManager, MCP stdio, snapshot
+> streaming, auth Bearer, port 11434, durcissement serveur et tests d'intégration livrés
+> (57 tests verts). Reste v2.1 : `generate_structured`, MCP Streamable-HTTP, ACP, WebSocket, SDKs.
 > **Auteur** : Aïssa BELKOUSSA
 > **Date** : 2026-06-04
 > **Portée** : extension de la v1 (serveur fonctionnel) vers un pont multi-protocoles / multi-langages.

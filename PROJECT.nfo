@@ -19,8 +19,8 @@
   License     : Apache-2.0
   Created     : 2026-06-04
   Updated     : 2026-06-04
-  Version     : 1.0.0
-  Status      : v1 — serveur HTTP fonctionnel (REST OpenAI + Anthropic + SSE)
+  Version     : 2.0.0
+  Status      : v2-MVP — MCP stdio + sessions multi-tours + streaming reel + auth Bearer
 
 ================================================================================
   DESCRIPTION
@@ -28,9 +28,10 @@
 
   FoundationBridge est une passerelle native (un seul binaire Swift) qui expose
   le modèle de langage on-device d'Apple — framework FoundationModels, au cœur
-  d'Apple Intelligence — à l'ensemble de l'écosystème agentique, via plusieurs
-  protocoles : MCP, REST OpenAI-compatible, REST Anthropic-compatible, mode
-  proxy, ACP (Zed), CLI et WebSocket. Plus des SDK clients générés (TS/Python/Go).
+  d'Apple Intelligence — à l'ensemble de l'écosystème agentique. Surfaces
+  disponibles : MCP stdio, REST OpenAI-compatible, REST Anthropic-compatible,
+  streaming SSE, mode proxy et CLI. À venir (v2.1) : MCP Streamable-HTTP, ACP
+  (Zed), WebSocket et SDK clients (Swift first-class + guides Python/TS/Go/Rust).
 
   Objectif : permettre à n'importe quel agent IA (Claude Code, Claude Desktop,
   Cursor, Zed, clients OpenAI/Anthropic) d'utiliser le modèle local — gratuit,
@@ -40,25 +41,28 @@
   STACK
 ================================================================================
 
-  Langage   : Swift 6.x (strict concurrency)
-  Serveur   : Hummingbird 2
-  Contrat   : OpenAPI 3.1 (swift-openapi-generator 1.0)
-  MCP       : modelcontextprotocol/swift-sdk
-  Cycle vie : swift-service-lifecycle
-  CLI       : swift-argument-parser
-  Clients   : TypeScript, Python, Go (générés depuis l'OpenAPI)
+  Langage   : Swift 6 (strict concurrency)
+  Serveur   : Hummingbird 2 (+ HummingbirdTesting pour les tests d'intégration)
+  MCP       : modelcontextprotocol/swift-sdk (0.12.x)
+  Backend   : FoundationModels (macOS 26, Apple Silicon)
+  Tests     : swift-testing (57 tests verts)
+  CLI       : parsing manuel d'arguments (sans dépendance)
 
 ================================================================================
   STRUCTURE
 ================================================================================
 
-  FoundationBridgeCore/   Logique métier (binding FM, sessions, contexte, tools)
-  ProtocolAdapters/       Façades : MCP, OpenAI, Anthropic, Conversion, ACP, WS
-  TransportServer/        Serveur HTTP Hummingbird 2
-  ProxyMode/              Passthrough ANTHROPIC_BASE_URL / OPENAI_BASE_URL
-  FoundationBridgeCLI/    Exécutable
-  Tests/                  swift-testing / XCTest
-  docs/                   Spécifications et documentation
+  Sources/FoundationBridgeCore/      Erreurs, disponibilité, TextGenerating,
+                                     ContextManager, BearerAuth, MockTextGenerator
+  Sources/FoundationBridgeSession/   SessionManager actor (multi-tours nommé)
+  Sources/ProtocolConversion/        Modèles OpenAI <-> Anthropic, validation
+  Sources/FoundationModelsBackend/   Binding réel FoundationModels + streaming
+  Sources/FoundationBridgeServer/    Serveur Hummingbird : REST + SSE + auth
+  Sources/FoundationBridgeMCP/       Routeur + serveur MCP stdio (swift-sdk)
+  Sources/FoundationBridgeCLI/       Exécutable (version/diagnose/generate/serve/mcp)
+  Tests/                             swift-testing (Core, Conversion, Session,
+                                     MCP, Server intégration/golden)
+  docs/                              Spécifications, plans, journaux de session
 
 ================================================================================
   PREREQUIS

@@ -40,11 +40,27 @@ import FoundationBridgeCore
     #expect(result.text.contains("indisponible"))
 }
 
-@Test func listModelsRenvoieLIdentifiantDuModele() async {
+@Test func listModelsRenvoieLIdentifiantEtDisponibilite() async {
+    // Disponibilité par défaut (.available) → ready=true.
     let router = MCPToolRouter(backend: MockTextGenerator(scriptedResponse: ""), modelId: "apple-foundation")
     let result = await router.callTool(name: "list_models", arguments: [:])
-    #expect(result.text == "apple-foundation")
     #expect(result.isError == false)
+    #expect(result.text.contains("\"id\":\"apple-foundation\""))
+    #expect(result.text.contains("\"ready\":true"))
+    #expect(result.text.contains("\"object\":\"list\""))
+}
+
+@Test func listModelsRefleteIndisponibilite() async {
+    // Modèle non prêt (Apple Intelligence désactivé) → ready=false + raison exposée.
+    let router = MCPToolRouter(
+        backend: MockTextGenerator(scriptedResponse: ""),
+        modelId: "apple-foundation",
+        availability: { .appleIntelligenceNotEnabled }
+    )
+    let result = await router.callTool(name: "list_models", arguments: [:])
+    #expect(result.isError == false)
+    #expect(result.text.contains("\"ready\":false"))
+    #expect(result.text.contains("Apple Intelligence"))
 }
 
 @Test func outilInconnuEstUneErreur() async {

@@ -130,7 +130,10 @@ case "mcp":
     // stdout est reserve au JSON-RPC ; tout diagnostic part sur stderr.
     #if canImport(FoundationModels)
     if #available(macOS 26.0, *) {
-        let router = MCPToolRouter(backend: FoundationModelsGenerator())
+        let router = MCPToolRouter(
+            backend: FoundationModelsGenerator(),
+            availability: { FoundationModelsGenerator.modelAvailability() }
+        )
         FileHandle.standardError.write(Data("FoundationBridge MCP (stdio) pret.\n".utf8))
         do {
             try await MCPServerRunner.run(router: router, version: FoundationBridge.coreVersion)

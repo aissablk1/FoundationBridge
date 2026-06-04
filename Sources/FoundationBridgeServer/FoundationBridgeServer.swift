@@ -197,6 +197,11 @@ public enum FoundationBridgeServer {
         var headers = HTTPFields()
         headers[.contentType] = "text/event-stream"
         headers[.cacheControl] = "no-cache"
+        // Désactive la mise en tampon côté proxy inverse (nginx, etc.) : sans cela,
+        // un proxy peut accumuler la réponse et casser le streaming temps réel.
+        headers[HTTPField.Name("X-Accel-Buffering")!] = "no"
+        // Cohérence avec les réponses JSON : empêche le MIME-sniffing navigateur.
+        headers[HTTPField.Name("X-Content-Type-Options")!] = "nosniff"
         return Response(status: .ok, headers: headers, body: body)
     }
 

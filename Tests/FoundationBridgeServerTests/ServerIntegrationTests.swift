@@ -88,6 +88,10 @@ import FoundationBridgeCore
     try await app.test(.router) { client in
         try await client.execute(uri: "/v1/chat/completions", method: .post,
                                  headers: [.contentType: "application/json"], body: body) { response in
+            // En-têtes de streaming : type SSE + anti-buffering proxy + nosniff.
+            #expect(response.headers[.contentType] == "text/event-stream")
+            #expect(response.headers[HTTPField.Name("X-Accel-Buffering")!] == "no")
+            #expect(response.headers[HTTPField.Name("X-Content-Type-Options")!] == "nosniff")
             let text = String(buffer: response.body)
             #expect(text.contains("\"content\":\"Hel\""))
             #expect(text.contains("\"content\":\"lo\""))

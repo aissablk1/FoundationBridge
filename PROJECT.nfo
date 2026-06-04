@@ -1,0 +1,89 @@
+================================================================================
+
+    ███████╗ ██████╗ ██╗   ██╗███╗   ██╗██████╗  █████╗ ████████╗██╗ ██████╗ ███╗   ██╗
+    ██╔════╝██╔═══██╗██║   ██║████╗  ██║██╔══██╗██╔══██╗╚══██╔══╝██║██╔═══██╗████╗  ██║
+    █████╗  ██║   ██║██║   ██║██╔██╗ ██║██║  ██║███████║   ██║   ██║██║   ██║██╔██╗ ██║
+    ██╔══╝  ██║   ██║██║   ██║██║╚██╗██║██║  ██║██╔══██║   ██║   ██║██║   ██║██║╚██╗██║
+    ██║     ╚██████╔╝╚██████╔╝██║ ╚████║██████╔╝██║  ██║   ██║   ██║╚██████╔╝██║ ╚████║
+    ╚═╝      ╚═════╝  ╚═════╝ ╚═╝  ╚═══╝╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚═╝ ╚═════╝ ╚═╝  ╚═══╝
+                           B  R  I  D  G  E
+
+================================================================================
+
+  Project     : FoundationBridge
+  Tagline     : Le LLM on-device d'Apple, exposé à tous les agents IA.
+  Author      : Aïssa BELKOUSSA
+  Contact     : [contact via GitHub Security]
+  Website     : -
+  Repository  : (à publier sur GitHub)
+  License     : Apache-2.0
+  Created     : 2026-06-04
+  Updated     : 2026-06-04
+  Version     : 0.0.1 (scaffold)
+  Status      : Conception / fondation — implémentation v1 en cours
+
+================================================================================
+  DESCRIPTION
+================================================================================
+
+  FoundationBridge est une passerelle native (un seul binaire Swift) qui expose
+  le modèle de langage on-device d'Apple — framework FoundationModels, au cœur
+  d'Apple Intelligence — à l'ensemble de l'écosystème agentique, via plusieurs
+  protocoles : MCP, REST OpenAI-compatible, REST Anthropic-compatible, mode
+  proxy, ACP (Zed), CLI et WebSocket. Plus des SDK clients générés (TS/Python/Go).
+
+  Objectif : permettre à n'importe quel agent IA (Claude Code, Claude Desktop,
+  Cursor, Zed, clients OpenAI/Anthropic) d'utiliser le modèle local — gratuit,
+  privé, hors-ligne — sans réécrire d'intégration.
+
+================================================================================
+  STACK
+================================================================================
+
+  Langage   : Swift 6.x (strict concurrency)
+  Serveur   : Hummingbird 2
+  Contrat   : OpenAPI 3.1 (swift-openapi-generator 1.0)
+  MCP       : modelcontextprotocol/swift-sdk
+  Cycle vie : swift-service-lifecycle
+  CLI       : swift-argument-parser
+  Clients   : TypeScript, Python, Go (générés depuis l'OpenAPI)
+
+================================================================================
+  STRUCTURE
+================================================================================
+
+  FoundationBridgeCore/   Logique métier (binding FM, sessions, contexte, tools)
+  ProtocolAdapters/       Façades : MCP, OpenAI, Anthropic, Conversion, ACP, WS
+  TransportServer/        Serveur HTTP Hummingbird 2
+  ProxyMode/              Passthrough ANTHROPIC_BASE_URL / OPENAI_BASE_URL
+  FoundationBridgeCLI/    Exécutable
+  Tests/                  swift-testing / XCTest
+  docs/                   Spécifications et documentation
+
+================================================================================
+  PREREQUIS
+================================================================================
+
+  - Mac Apple Silicon (M1+)
+  - macOS 26 (Tahoe)
+  - Apple Intelligence activé + modèle téléchargé
+  - Swift 6.x / Xcode 26 (ou Command Line Tools)
+
+================================================================================
+  CREDITS
+================================================================================
+
+  Auteur : Aïssa BELKOUSSA
+
+================================================================================
+  NOTES
+================================================================================
+
+  FoundationModels est exclusif aux plateformes Apple récentes. FoundationBridge
+  ne vise pas Linux/Windows/x86. Le modèle on-device est spécialisé pour les
+  tâches courtes (résumé, extraction, classification, dialogue), pas pour la
+  culture générale étendue. Fenêtre de contexte ~4096 tokens.
+
+================================================================================
+  Copyright (c) 2026 Aïssa BELKOUSSA. Licensed under Apache-2.0.
+================================================================================

@@ -1,0 +1,29 @@
+# Swift / SwiftPM
+.build/
+.swiftpm/
+Package.resolved
+*.xcodeproj
+*.xcworkspace
+DerivedData/
+
+# macOS
+.DS_Store
+
+# Binaires / artefacts
+/bin/
+*.o
+*.dSYM/
+
+# Secrets / env
+.env
+.env.*
+!.env.example
+
+# SDK clients générés (régénérés depuis l'OpenAPI)
+/clients/typescript/dist/
+/clients/python/build/
+/clients/go/bin/
+node_modules/
+
+# Logs
+*.log

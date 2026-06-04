@@ -1,7 +1,6 @@
 # Swift / SwiftPM
 .build/
 .swiftpm/
-Package.resolved
 *.xcodeproj
 *.xcworkspace
 DerivedData/
@@ -27,3 +26,5 @@ node_modules/
 
 # Logs
 *.log
+
+# Package.resolved EST committé volontairement (builds reproductibles + audit CVE)

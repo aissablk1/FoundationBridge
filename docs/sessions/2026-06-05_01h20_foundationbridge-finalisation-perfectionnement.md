@@ -15,8 +15,11 @@ tags: [finalisation, securite, cve, sse, mcp, ci, perfectionnement]
 - **Qui** : Aïssa BELKOUSSA.
 - **Quoi** : finaliser le projet — perfectionnement code, analyse, debug, documentation,
   sécurité — organisé en 4 groupes de tâches (A analyse/santé, B code, C sécurité, D doc).
-- **Où** : dépôt Swift FoundationBridge (branche `main`), macOS 26.5 / Swift 6.3.2 (Mac Intel
-  x86_64 → FoundationModels indisponible localement, tests sur mock uniquement).
+- **Où** : dépôt Swift FoundationBridge (branche `main`), MacBook Pro **Apple M3 Pro**
+  (Apple Silicon), macOS 26.5 / Swift 6.3.2. NB : le shell de session tournait sous **Rosetta 2**
+  (triplet `x86_64`, `arch`=i386), ce qui a fait builder en x86_64 et exclu FoundationModels du
+  build local ; en natif `arch -arm64` la cible est `arm64-apple-macosx26.0` (chemin device
+  accessible). Tests de cette session : sur mock (transport), comme prévu en CI.
 - **Quand** : nuit du 2026-06-05, ~01h08 → 01h35.
 - **Comment** : base vérifiée d'abord (build + 57 tests verts), re-scan CVE par agent dédié,
   puis modifications TDD minimales (vert avant commit, §32), backups horodatés (§6).
@@ -47,6 +50,10 @@ tags: [finalisation, securite, cve, sse, mcp, ci, perfectionnement]
 - **[D1]** Docs : nouvel audit `docs/security/cve-audit-2026-06-05.md` (verdict vérifié),
   statut design v2 actualisé, `PROJECT.nfo` (Updated, 58 tests, ligne Security).
 - Build + 58 tests verts après modifications (vérifié, §32).
+- **e2e on-device VÉRIFIÉ** (build natif `arch -arm64`, M3 Pro / macOS 26.5) :
+  `foundationbridge diagnose` → « Disponibilite du modele : disponible » ; `generate`
+  → réponse réelle du LLM Apple (FoundationModels). Le chemin device, précédemment
+  cru « non testable localement », est en fait opérationnel sur cette machine.
 
 ## Actions à mener à l'avenir
 
@@ -59,7 +66,9 @@ tags: [finalisation, securite, cve, sse, mcp, ci, perfectionnement]
 
 - **Décision** : ne pas imposer de planchers de version dans `Package.swift` (dépendances
   transitives → sur-ingénierie, §27) ; le scan OSV en CI est le garde-fou retenu.
-- **Blocage environnement** : FoundationModels indisponible sur ce Mac Intel — chemins device
-  non testables localement (attendu, marqué `[NON TESTÉ — device requis]`).
+- **Correction §29** : contrairement à une première affirmation erronée de la session, la
+  machine est un **Apple M3 Pro** (Apple Silicon), pas un Mac Intel. FoundationModels n'était
+  indisponible qu'à cause du shell émulé Rosetta 2 (x86_64) ; en build natif arm64 le chemin
+  device est accessible et a été vérifié (voir `diagnose` ci-dessous / commit de suivi).
 - **Sécurité** : aucun email personnel dans les surfaces versionnées (vérifié), `user.email`
   Git = adresse `noreply` (§35).

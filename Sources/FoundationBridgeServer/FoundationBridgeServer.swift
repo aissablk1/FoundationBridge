@@ -35,6 +35,7 @@ public enum FoundationBridgeServer {
             do {
                 let req = try JSONDecoder().decode(OpenAIChatRequest.self, from: data)
                 let (prompt, options) = RequestConverter.extract(from: req)
+                try RequestValidator.validate(prompt: prompt, options: options)
                 if req.stream == true {
                     return sse(prompt: prompt, options: options, model: req.model, dialect: .openAI)
                 }
@@ -52,6 +53,7 @@ public enum FoundationBridgeServer {
             do {
                 let req = try JSONDecoder().decode(AnthropicRequest.self, from: data)
                 let (prompt, options) = RequestConverter.extract(from: req)
+                try RequestValidator.validate(prompt: prompt, options: options)
                 if req.stream == true {
                     return sse(prompt: prompt, options: options, model: req.model, dialect: .anthropic)
                 }
@@ -143,6 +145,8 @@ public enum FoundationBridgeServer {
     static func jsonResponse(_ data: Data, status: HTTPResponse.Status = .ok) -> Response {
         var headers = HTTPFields()
         headers[.contentType] = "application/json"
+        // Header de sécurité : empêche le MIME-sniffing côté navigateur
+        headers[HTTPField.Name("X-Content-Type-Options")!] = "nosniff"
         return Response(status: status, headers: headers, body: ResponseBody(byteBuffer: ByteBuffer(bytes: data)))
     }
 

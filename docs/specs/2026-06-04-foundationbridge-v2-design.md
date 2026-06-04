@@ -3,8 +3,11 @@
 🇬🇧 **English** · 🇫🇷 [Français](2026-06-04-foundationbridge-v2-design.fr.md)
 
 > **Status**: ✅ **v2-MVP implemented** (2026-06-04) — SessionManager, MCP stdio, snapshot
-> streaming, Bearer auth, port 11434, server hardening and integration tests shipped
-> (57 tests passing). Remaining for v2.1: `generate_structured`, MCP Streamable-HTTP, ACP, WebSocket, SDKs.
+> streaming, Bearer auth, port 11434, server hardening and integration tests shipped.
+> **2026-06-05 hardening**: proxy-safe SSE headers (`X-Accel-Buffering: no`, `nosniff`),
+> MCP `list_models` now reports real availability (`ready`/`status`), OSV dependency scan
+> wired into CI (58 tests passing). Remaining for v2.1: `generate_structured`,
+> MCP Streamable-HTTP, ACP, WebSocket, SDKs.
 > **Author**: Aïssa BELKOUSSA · **Date**: 2026-06-04
 > **Scope**: extension of v1 (working server) toward a multi-protocol / multi-language bridge.
 > **Method**: derived from multi-agent research (teardown of 7 competitors + 7 protocols + adversarial completeness critique), reframed against the real v1 code.

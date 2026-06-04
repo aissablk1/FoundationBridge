@@ -150,7 +150,7 @@ Universal binary (arm64 + x86_64): `./scripts/build-universal.sh`.
 | `FoundationBridgeMCP` | `MCPToolRouter` (logic) + `MCPServerRunner` (stdio via the official MCP SDK) |
 | `FoundationBridgeCLI` | Executable, `version/diagnose/generate/serve/mcp` commands |
 
-✅ **57 tests passing.** Details: [`docs/specs/2026-06-04-foundationbridge-v2-design.md`](docs/specs/2026-06-04-foundationbridge-v2-design.md).
+✅ **58 tests passing.** Details: [`docs/specs/2026-06-04-foundationbridge-v2-design.md`](docs/specs/2026-06-04-foundationbridge-v2-design.md).
 
 ---
 

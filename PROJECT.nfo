@@ -11,7 +11,7 @@
 ================================================================================
 
   Project     : FoundationBridge
-  Tagline     : Le LLM on-device d'Apple, exposé à tous les agents IA.
+  Tagline     : Apple's on-device LLM, exposed to every AI agent.
   Author      : Aïssa BELKOUSSA
   Contact     : [contact via GitHub Security]
   Website     : -
@@ -20,73 +20,73 @@
   Created     : 2026-06-04
   Updated     : 2026-06-04
   Version     : 2.0.0
-  Status      : v2-MVP — MCP stdio + sessions multi-tours + streaming reel + auth Bearer
+  Status      : v2-MVP — MCP stdio + multi-turn sessions + real streaming + Bearer auth
 
 ================================================================================
   DESCRIPTION
 ================================================================================
 
-  FoundationBridge est une passerelle native (un seul binaire Swift) qui expose
-  le modèle de langage on-device d'Apple — framework FoundationModels, au cœur
-  d'Apple Intelligence — à l'ensemble de l'écosystème agentique. Surfaces
-  disponibles : MCP stdio, REST OpenAI-compatible, REST Anthropic-compatible,
-  streaming SSE, mode proxy et CLI. À venir (v2.1) : MCP Streamable-HTTP, ACP
-  (Zed), WebSocket et SDK clients (Swift first-class + guides Python/TS/Go/Rust).
+  FoundationBridge is a native gateway (a single Swift binary) that exposes
+  Apple's on-device language model — the FoundationModels framework, at the core
+  of Apple Intelligence — to the whole agentic ecosystem. Available surfaces:
+  MCP stdio, OpenAI-compatible REST, Anthropic-compatible REST, SSE streaming,
+  proxy mode and CLI. Coming (v2.1): MCP Streamable-HTTP, ACP (Zed), WebSocket
+  and client SDKs (first-class Swift + Python/TS/Go/Rust guides).
 
-  Objectif : permettre à n'importe quel agent IA (Claude Code, Claude Desktop,
-  Cursor, Zed, clients OpenAI/Anthropic) d'utiliser le modèle local — gratuit,
-  privé, hors-ligne — sans réécrire d'intégration.
+  Goal: let any AI agent (Claude Code, Claude Desktop, Cursor, Zed, OpenAI/
+  Anthropic clients) use the local model — free, private, offline — without
+  rewriting any integration.
 
 ================================================================================
   STACK
 ================================================================================
 
-  Langage   : Swift 6 (strict concurrency)
-  Serveur   : Hummingbird 2 (+ HummingbirdTesting pour les tests d'intégration)
+  Language  : Swift 6 (strict concurrency)
+  Server    : Hummingbird 2 (+ HummingbirdTesting for integration tests)
   MCP       : modelcontextprotocol/swift-sdk (0.12.x)
   Backend   : FoundationModels (macOS 26, Apple Silicon)
-  Tests     : swift-testing (57 tests verts)
-  CLI       : parsing manuel d'arguments (sans dépendance)
+  Tests     : swift-testing (57 tests passing)
+  CLI       : manual argument parsing (no dependency)
 
 ================================================================================
   STRUCTURE
 ================================================================================
 
-  Sources/FoundationBridgeCore/      Erreurs, disponibilité, TextGenerating,
+  Sources/FoundationBridgeCore/      Errors, availability, TextGenerating,
                                      ContextManager, BearerAuth, MockTextGenerator
-  Sources/FoundationBridgeSession/   SessionManager actor (multi-tours nommé)
-  Sources/ProtocolConversion/        Modèles OpenAI <-> Anthropic, validation
-  Sources/FoundationModelsBackend/   Binding réel FoundationModels + streaming
-  Sources/FoundationBridgeServer/    Serveur Hummingbird : REST + SSE + auth
-  Sources/FoundationBridgeMCP/       Routeur + serveur MCP stdio (swift-sdk)
-  Sources/FoundationBridgeCLI/       Exécutable (version/diagnose/generate/serve/mcp)
+  Sources/FoundationBridgeSession/   SessionManager actor (named multi-turn)
+  Sources/ProtocolConversion/        OpenAI <-> Anthropic models, validation
+  Sources/FoundationModelsBackend/   Real FoundationModels binding + streaming
+  Sources/FoundationBridgeServer/    Hummingbird server: REST + SSE + auth
+  Sources/FoundationBridgeMCP/       Router + MCP stdio server (swift-sdk)
+  Sources/FoundationBridgeCLI/       Executable (version/diagnose/generate/serve/mcp)
   Tests/                             swift-testing (Core, Conversion, Session,
-                                     MCP, Server intégration/golden)
-  docs/                              Spécifications, plans, journaux de session
+                                     MCP, Server integration/golden)
+  docs/                              Specs, plans, session journals
 
 ================================================================================
-  PREREQUIS
+  REQUIREMENTS
 ================================================================================
 
-  - Mac Apple Silicon (M1+)
+  - Apple Silicon Mac (M1+)
   - macOS 26 (Tahoe)
-  - Apple Intelligence activé + modèle téléchargé
-  - Swift 6.x / Xcode 26 (ou Command Line Tools)
+  - Apple Intelligence enabled + model downloaded
+  - Swift 6.x / Xcode 26 (or Command Line Tools)
 
 ================================================================================
   CREDITS
 ================================================================================
 
-  Auteur : Aïssa BELKOUSSA
+  Author : Aïssa BELKOUSSA
 
 ================================================================================
   NOTES
 ================================================================================
 
-  FoundationModels est exclusif aux plateformes Apple récentes. FoundationBridge
-  ne vise pas Linux/Windows/x86. Le modèle on-device est spécialisé pour les
-  tâches courtes (résumé, extraction, classification, dialogue), pas pour la
-  culture générale étendue. Fenêtre de contexte ~4096 tokens.
+  FoundationModels is exclusive to recent Apple platforms. FoundationBridge does
+  not target Linux/Windows/x86. The on-device model is specialized for short
+  tasks (summarization, extraction, classification, dialogue), not broad general
+  knowledge. Context window ~4096 tokens.
 
 ================================================================================
   Copyright (c) 2026 Aïssa BELKOUSSA. Licensed under Apache-2.0.

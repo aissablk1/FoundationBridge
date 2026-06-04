@@ -52,6 +52,14 @@ let package = Package(
                 .product(name: "Hummingbird", package: "hummingbird"),
             ]
         ),
+        .testTarget(
+            name: "FoundationBridgeServerTests",
+            dependencies: [
+                "FoundationBridgeServer",
+                "FoundationBridgeCore",
+                .product(name: "HummingbirdTesting", package: "hummingbird"),
+            ]
+        ),
         .target(
             name: "FoundationBridgeMCP",
             dependencies: [

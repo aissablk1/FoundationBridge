@@ -21,6 +21,24 @@ jobs:
       - name: Test
         run: swift test
 
+  # Scan de vulnérabilités des dépendances (supply-chain) sur chaque PR/push.
+  # Couvre en continu les lignes « [À VÉRIFIER] » de docs/security/cve-audit-*.md :
+  # osv-scanner consomme directement Package.resolved (lockfile SwiftPM) et croise
+  # la GitHub Advisory DB filtrée sur l'écosystème Swift.
+  vuln-scan:
+    name: Dependency vulnerability scan (OSV)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: OSV scan (Package.resolved)
+        uses: google/osv-scanner-action@v2.2.4
+        with:
+          scan-args: |-
+            --lockfile=Package.resolved
+
   # Les chemins e2e du backend FoundationModels nécessitent un runner
   # macOS 26 + Apple Silicon avec Apple Intelligence activé (non disponible
   # sur les runners GitHub hébergés standards). Ils sont exécutés séparément

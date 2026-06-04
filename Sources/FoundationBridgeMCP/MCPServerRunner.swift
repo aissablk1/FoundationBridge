@@ -66,7 +66,7 @@ public enum MCPServerRunner {
                 }
             }
             let result = await router.callTool(name: params.name, arguments: arguments)
-            return .init(content: [.text(result.text)], isError: result.isError)
+            return .init(content: [.text(text: result.text, annotations: nil, _meta: nil)], isError: result.isError)
         }
 
         let transport = StdioTransport()

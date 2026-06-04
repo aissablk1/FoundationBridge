@@ -32,13 +32,17 @@ Les ponts existants couvrent chacun une partie du besoin, **jamais l'ensemble** 
 | **REST OpenAI-compatible** (`/v1/chat/completions`, `/v1/models`) | ✅ disponible |
 | **REST Anthropic-compatible** (`/v1/messages`) | ✅ disponible |
 | **Streaming SSE** (les deux formats, `stream: true`) | ✅ disponible |
+| **Snapshot streaming réel** (deltas via `streamResponse`) | ✅ disponible |
+| **MCP stdio** (`generate`, `list_models`) — Claude Desktop/Code, Cursor, Zed | ✅ disponible |
+| **Sessions multi-tours nommées** (in-process) | ✅ disponible |
+| **Authentification Bearer** optionnelle (`--token` / `FB_TOKEN`) | ✅ disponible |
 | **Mode proxy** (`ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL`) | ✅ disponible |
-| **CLI** (`version`, `diagnose`, `generate`, `serve --port`) | ✅ disponible |
+| **CLI** (`version`, `diagnose`, `generate`, `serve`, `mcp`) | ✅ disponible |
 | **Binaire universel** (arm64 + x86_64 / Rosetta) | ✅ disponible |
-| **MCP** (stdio + Streamable HTTP) | ⬜ à venir (v2) |
-| **ACP** (Zed Agent Client Protocol) | ⬜ à venir (v2) |
-| **WebSocket** (streaming bidirectionnel) | ⬜ à venir (v2) |
-| **SDK clients** générés (TypeScript, Python, Go) | ⬜ à venir (v2) |
+| **MCP Streamable-HTTP** + outil `generate_structured` | ⬜ à venir (v2.1) |
+| **ACP** (Zed Agent Client Protocol) | ⬜ à venir (v2.1) |
+| **WebSocket** (streaming bidirectionnel) | ⬜ à venir (v2.1) |
+| **SDK clients** (Swift first-class, guides Python/TS/Go/Rust) | ⬜ à venir (v2.1) |
 
 ---
 
@@ -66,20 +70,20 @@ Le binaire est produit dans `.build/release/foundationbridge`.
 ### 2 — Lancer le serveur
 
 ```bash
-.build/release/foundationbridge serve --port 8080
+.build/release/foundationbridge serve --port 11434
 ```
 
 Ou, si le binaire est dans votre `PATH` :
 
 ```bash
-foundationbridge serve --port 8080
+foundationbridge serve --port 11434
 ```
 
 Vérification :
 
 ```bash
-curl http://127.0.0.1:8080/healthz
-curl http://127.0.0.1:8080/v1/models
+curl http://127.0.0.1:11434/healthz
+curl http://127.0.0.1:11434/v1/models
 ```
 
 ---
@@ -89,7 +93,7 @@ curl http://127.0.0.1:8080/v1/models
 #### Format OpenAI — requête simple
 
 ```bash
-curl http://127.0.0.1:8080/v1/chat/completions \
+curl http://127.0.0.1:11434/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "apple/on-device",
@@ -100,7 +104,7 @@ curl http://127.0.0.1:8080/v1/chat/completions \
 #### Format OpenAI — streaming SSE
 
 ```bash
-curl --no-buffer http://127.0.0.1:8080/v1/chat/completions \
+curl --no-buffer http://127.0.0.1:11434/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "apple/on-device",
@@ -112,7 +116,7 @@ curl --no-buffer http://127.0.0.1:8080/v1/chat/completions \
 #### Format Anthropic — requête simple
 
 ```bash
-curl http://127.0.0.1:8080/v1/messages \
+curl http://127.0.0.1:11434/v1/messages \
   -H "Content-Type: application/json" \
   -H "x-api-key: local" \
   -H "anthropic-version: 2023-06-01" \
@@ -126,7 +130,7 @@ curl http://127.0.0.1:8080/v1/messages \
 #### Format Anthropic — streaming SSE
 
 ```bash
-curl --no-buffer http://127.0.0.1:8080/v1/messages \
+curl --no-buffer http://127.0.0.1:11434/v1/messages \
   -H "Content-Type: application/json" \
   -H "x-api-key: local" \
   -H "anthropic-version: 2023-06-01" \
@@ -145,15 +149,47 @@ curl --no-buffer http://127.0.0.1:8080/v1/messages \
 Pour router Claude Code vers le modèle on-device local, définir la variable d'environnement avant de lancer Claude Code :
 
 ```bash
-export ANTHROPIC_BASE_URL=http://127.0.0.1:8080
+export ANTHROPIC_BASE_URL=http://127.0.0.1:11434
 claude
 ```
 
 Ou ponctuellement :
 
 ```bash
-ANTHROPIC_BASE_URL=http://127.0.0.1:8080 claude "Résume ce fichier"
+ANTHROPIC_BASE_URL=http://127.0.0.1:11434 claude "Résume ce fichier"
 ```
+
+---
+
+### 5 — Branchement MCP (Claude Desktop/Code, Cursor, Zed)
+
+FoundationBridge expose le modèle on-device comme **serveur MCP stdio** (outils `generate` et `list_models`). Enregistrement dans Claude Code :
+
+```bash
+claude mcp add foundationbridge -- /chemin/vers/foundationbridge mcp
+```
+
+Ou directement en stdio (JSON-RPC sur stdin/stdout) :
+
+```bash
+foundationbridge mcp
+```
+
+L'outil `generate` accepte `prompt` (requis) et `session` (optionnel, pour une conversation multi-tours conservée en mémoire).
+
+---
+
+### 6 — Authentification (optionnelle)
+
+Par défaut le serveur écoute sur `127.0.0.1` sans authentification. Pour exiger un token Bearer :
+
+```bash
+foundationbridge serve --token mon-secret
+# ou via l'environnement
+FB_TOKEN=mon-secret foundationbridge serve
+```
+
+Les requêtes doivent alors porter `Authorization: Bearer mon-secret` (ou `x-api-key: mon-secret`). Un bind non-local (`--host 0.0.0.0`) **exige** un token.
 
 ---
 
@@ -180,7 +216,8 @@ lipo -archs .build/universal/foundationbridge
 foundationbridge version          Affiche la version du binaire
 foundationbridge diagnose         Vérifie la disponibilité d'Apple Intelligence
 foundationbridge generate <texte> Génère une réponse on-device (non-stream)
-foundationbridge serve --port N   Lance le serveur HTTP sur le port N
+foundationbridge serve [options]  Lance le serveur HTTP (--port N --host H --token T)
+foundationbridge mcp              Lance le serveur MCP stdio (JSON-RPC)
 ```
 
 ---
@@ -191,20 +228,26 @@ foundationbridge serve --port N   Lance le serveur HTTP sur le port N
 
 | Module | Rôle |
 |---|---|
-| `FoundationBridgeCore` | ExitCode, BridgeError, ModelAvailability, TextGenerating, ContextManager |
+| `FoundationBridgeCore` | ExitCode, BridgeError, ModelAvailability, TextGenerating, ContextManager, BearerAuth |
+| `FoundationBridgeSession` | `SessionManager` actor : sessions multi-tours nommées, une requête en vol/session |
 | `ProtocolConversion` | Modèles OpenAI ↔ Anthropic, golden tests de conversion |
-| `FoundationModelsBackend` | Binding réel au framework FoundationModels d'Apple |
-| `FoundationBridgeServer` | Serveur HTTP Hummingbird 2, routes REST + SSE |
-| `FoundationBridgeCLI` | Exécutable, commandes argument-parser |
+| `FoundationModelsBackend` | Binding réel au framework FoundationModels d'Apple (+ snapshot streaming) |
+| `FoundationBridgeServer` | Serveur HTTP Hummingbird 2, routes REST + SSE + middleware auth |
+| `FoundationBridgeMCP` | `MCPToolRouter` (logique) + `MCPServerRunner` (stdio via SDK MCP officiel) |
+| `FoundationBridgeCLI` | Exécutable, commandes `version/diagnose/generate/serve/mcp` |
 
-16 tests passent. Détails complets : [`docs/specs/2026-06-04-foundationbridge-design.md`](docs/specs/2026-06-04-foundationbridge-design.md).
+46 tests passent. Détails : [`docs/specs/2026-06-04-foundationbridge-v2-design.md`](docs/specs/2026-06-04-foundationbridge-v2-design.md).
 
 ---
 
 ## Feuille de route
 
-- **v1 (disponible)** — binding natif, streaming SSE, sessions, REST OpenAI + Anthropic + conversion testée, proxy, CLI, gestion contexte, binaire universel.
-- **v2** — MCP (stdio + Streamable HTTP), ACP, WebSocket, SDK clients publiés (TypeScript, Python, Go), observabilité Prometheus, compaction tiérée, binaire signé/notarisé + Homebrew.
+- **v1** — binding natif, streaming SSE, REST OpenAI + Anthropic + conversion testée, proxy, CLI, gestion contexte, binaire universel.
+- **v2-MVP (disponible)** — **serveur MCP stdio** (`generate`, `list_models`), **sessions multi-tours nommées** (`SessionManager` actor), **snapshot streaming réel** (`streamResponse`), **auth Bearer optionnelle**, port par défaut 11434.
+- **v2.1** — MCP Streamable-HTTP, outil `generate_structured` (`@Generable` → JSON Schema), ACP (Zed/JetBrains), WebSocket, Unix socket, SDK Swift first-class + guides Python/TS/Go/Rust.
+- **plus tard** — observabilité Prometheus, binaire signé/notarisé + Homebrew tap.
+
+Détails : [`docs/specs/2026-06-04-foundationbridge-v2-design.md`](docs/specs/2026-06-04-foundationbridge-v2-design.md).
 
 ---
 

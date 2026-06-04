@@ -13,10 +13,9 @@ FoundationBridge est un projet en phase initiale ; les correctifs de sécurité 
 
 ## Signaler une vulnérabilité
 
-**Merci de ne pas ouvrir d'issue publique pour un problème de sécurité.** Signalez en privé :
-
-- **De préférence** — signalement privé GitHub : dépôt **Security → Advisories → Report a vulnerability**.
-- **Ou par email** — `[contact via GitHub Security]`.
+**Merci de ne pas ouvrir d'issue publique pour un problème de sécurité.** Signalez en privé
+via le **signalement privé GitHub** : dépôt **Security → Advisories → Report a vulnerability**.
+Le rapport reste confidentiel entre vous et le mainteneur.
 
 Merci d'inclure : version ou commit affecté, étapes de reproduction, impact, et un correctif proposé si vous en avez un. Vous pouvez attendre un accusé de réception sous **5 jours ouvrés**, et une divulgation coordonnée une fois le correctif disponible.
 

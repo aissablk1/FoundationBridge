@@ -13,10 +13,9 @@ FoundationBridge is an early-stage project; security fixes land on `main`.
 
 ## Reporting a vulnerability
 
-**Please do not open a public issue for security problems.** Report privately:
-
-- **Preferred** — GitHub private vulnerability reporting: repository **Security → Advisories → Report a vulnerability**.
-- **Or by email** — `[contact via GitHub Security]`.
+**Please do not open a public issue for security problems.** Report privately through
+**GitHub private vulnerability reporting**: repository **Security → Advisories → Report a vulnerability**.
+This keeps the report confidential between you and the maintainer.
 
 Please include: affected version or commit, reproduction steps, impact, and a suggested fix if you have one. You can expect an acknowledgement within **5 business days**, and a coordinated disclosure once a fix is available.
 

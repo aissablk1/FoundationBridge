@@ -18,7 +18,10 @@ func printUsage() {
       version              Affiche la version
       diagnose             Affiche la disponibilite du modele on-device
       generate <texte>     Genere une reponse (lit aussi stdin si pas d'argument)
-      serve [--port N]     Demarre le serveur HTTP (REST OpenAI + Anthropic)
+      serve [--port N] [--host H] [--token T]
+                           Demarre le serveur HTTP (REST OpenAI + Anthropic)
+                           --token (ou env FB_TOKEN) active l'auth Bearer
+                           --host non-local exige un token
       mcp                  Demarre le serveur MCP stdio (Claude Desktop/Code, Cursor, Zed)
       help                 Affiche cette aide
 
@@ -79,6 +82,14 @@ func parsePort(_ args: [String]) -> Int {
     return 11434
 }
 
+/// Lit la valeur d'un drapeau `--clef valeur`, sinon nil.
+func parseFlag(_ args: [String], _ flag: String) -> String? {
+    if let i = args.firstIndex(of: flag), i + 1 < args.count {
+        return args[i + 1]
+    }
+    return nil
+}
+
 let args = Array(CommandLine.arguments.dropFirst())
 let command = args.first ?? "help"
 var code: Int32 = ExitCode.success.rawValue
@@ -96,16 +107,24 @@ case "generate":
     code = await runGenerate(prompt: prompt)
 case "serve":
     let port = parsePort(args)
-    do {
-        print("FoundationBridge — serveur HTTP sur http://127.0.0.1:\(port)")
-        print("  GET  /healthz")
-        print("  GET  /v1/models")
-        print("  POST /v1/chat/completions   (OpenAI)")
-        print("  POST /v1/messages           (Anthropic)")
-        try await FoundationBridgeServer.makeApplication(config: .init(port: port)).runService()
-    } catch {
-        FileHandle.standardError.write(Data((String(describing: error) + "\n").utf8))
-        code = ExitCode.genericError.rawValue
+    let host = parseFlag(args, "--host") ?? "127.0.0.1"
+    let token = parseFlag(args, "--token") ?? ProcessInfo.processInfo.environment["FB_TOKEN"]
+    if host != "127.0.0.1" && host != "localhost" && (token ?? "").isEmpty {
+        FileHandle.standardError.write(Data("Refus securite : --host non-local exige --token (ou FB_TOKEN).\n".utf8))
+        code = ExitCode.guardrailBlocked.rawValue
+    } else {
+        do {
+            let auth = (token ?? "").isEmpty ? "ouverte (local)" : "Bearer requise"
+            print("FoundationBridge — serveur HTTP sur http://\(host):\(port)  [auth : \(auth)]")
+            print("  GET  /healthz")
+            print("  GET  /v1/models")
+            print("  POST /v1/chat/completions   (OpenAI)")
+            print("  POST /v1/messages           (Anthropic)")
+            try await FoundationBridgeServer.makeApplication(config: .init(host: host, port: port, token: token)).runService()
+        } catch {
+            FileHandle.standardError.write(Data((String(describing: error) + "\n").utf8))
+            code = ExitCode.genericError.rawValue
+        }
     }
 case "mcp":
     // stdout est reserve au JSON-RPC ; tout diagnostic part sur stderr.

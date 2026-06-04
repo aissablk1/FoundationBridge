@@ -10,9 +10,36 @@ import FoundationModelsBackend
 public struct ServerConfig: Sendable {
     public var host: String
     public var port: Int
-    public init(host: String = "127.0.0.1", port: Int = 11434) {
+    /// Token Bearer optionnel. Si défini, toutes les routes exigent
+    /// `Authorization: Bearer <token>` ou `x-api-key: <token>`.
+    public var token: String?
+    public init(host: String = "127.0.0.1", port: Int = 11434, token: String? = nil) {
         self.host = host
         self.port = port
+        self.token = token
+    }
+}
+
+/// Middleware d'authentification Bearer. Délègue la décision au helper pur
+/// `BearerAuth` du cœur ; ne s'enregistre que si un token est configuré.
+struct BearerAuthMiddleware<Context: RequestContext>: RouterMiddleware {
+    let token: String
+
+    func handle(
+        _ request: Request,
+        context: Context,
+        next: (Request, Context) async throws -> Response
+    ) async throws -> Response {
+        let authorization = request.headers[.authorization]
+        let apiKey = request.headers[HTTPField.Name("x-api-key")!]
+        guard BearerAuth.isAuthorized(
+            configuredToken: token,
+            authorizationHeader: authorization,
+            apiKeyHeader: apiKey
+        ) else {
+            throw HTTPError(.unauthorized, message: "Token invalide ou manquant")
+        }
+        return try await next(request, context)
     }
 }
 
@@ -22,6 +49,11 @@ public enum FoundationBridgeServer {
 
     public static func makeApplication(config: ServerConfig = .init()) -> some ApplicationProtocol {
         let router = Router()
+
+        // Authentification optionnelle : active uniquement si un token est configuré.
+        if let token = config.token, !token.isEmpty {
+            router.add(middleware: BearerAuthMiddleware(token: token))
+        }
 
         router.get("/healthz") { _, _ in "ok" }
 

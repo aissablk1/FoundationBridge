@@ -50,11 +50,30 @@ public struct FoundationModelsGenerator: TextGenerating {
     public func stream(to prompt: String, options: FoundationBridgeCore.GenerationOptions) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             Task {
+                if let error = Self.modelAvailability().asErrorIfUnavailable() {
+                    continuation.finish(throwing: error)
+                    return
+                }
+                let session: LanguageModelSession
+                if let instructions = options.instructions {
+                    session = LanguageModelSession(instructions: instructions)
+                } else {
+                    session = LanguageModelSession()
+                }
                 do {
-                    // v1 : repli mono-bloc. Le streaming par snapshots (streamResponse)
-                    // sera branché au plan 02 (mapping snapshot -> chunks).
-                    let text = try await self.respond(to: prompt, options: options)
-                    continuation.yield(text)
+                    // FoundationModels émet des snapshots CUMULATIFS (l'état partiel
+                    // complet à chaque étape). On n'émet que le nouveau suffixe afin de
+                    // produire des deltas façon SSE/OpenAI. On se protège d'un éventuel
+                    // snapshot plus court (rollback non garanti, cf. design §F).
+                    var previous = ""
+                    for try await snapshot in session.streamResponse(to: prompt) {
+                        let cumulative = snapshot.content
+                        if cumulative.count >= previous.count {
+                            let delta = String(cumulative.dropFirst(previous.count))
+                            if !delta.isEmpty { continuation.yield(delta) }
+                        }
+                        previous = cumulative
+                    }
                     continuation.finish()
                 } catch {
                     continuation.finish(throwing: error)

@@ -15,12 +15,12 @@
   Author      : Aïssa BELKOUSSA
   Contact     : [contact via GitHub Security]
   Website     : -
-  Repository  : (à publier sur GitHub)
+  Repository  : https://github.com/aissablk1/FoundationBridge
   License     : Apache-2.0
   Created     : 2026-06-04
   Updated     : 2026-06-04
-  Version     : 0.0.1 (scaffold)
-  Status      : Conception / fondation — implémentation v1 en cours
+  Version     : 1.0.0
+  Status      : v1 — serveur HTTP fonctionnel (REST OpenAI + Anthropic + SSE)
 
 ================================================================================
   DESCRIPTION

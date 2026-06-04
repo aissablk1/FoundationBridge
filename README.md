@@ -1,263 +1,174 @@
 <!-- markdownlint-disable MD033 MD041 -->
 <div align="center">
 
-# FoundationBridge
+# 🌉 FoundationBridge
 
-**Une passerelle native qui expose le LLM on-device d'Apple (FoundationModels) à tout l'écosystème agentique — MCP, REST OpenAI, REST Anthropic, SSE, CLI, proxy — depuis un seul binaire Swift.**
+🇬🇧 **English** · 🇫🇷 [Français](README.fr.md)
+
+**A native gateway that exposes Apple's on-device LLM (FoundationModels) to the whole agentic ecosystem — MCP, OpenAI REST, Anthropic REST, SSE, CLI, proxy — from a single Swift binary.**
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-macOS%2026%20·%20Apple%20Silicon-black.svg)](#prérequis)
-[![Status](https://img.shields.io/badge/status-v2--MVP-brightgreen.svg)](#feuille-de-route)
-[![Tests](https://img.shields.io/badge/tests-57%20✓-brightgreen.svg)](#architecture)
+[![Platform](https://img.shields.io/badge/platform-macOS%2026%20·%20Apple%20Silicon-black.svg)](#-requirements)
+[![Status](https://img.shields.io/badge/status-v2--MVP-brightgreen.svg)](#-roadmap)
+[![Tests](https://img.shields.io/badge/tests-57%20✓-brightgreen.svg)](#-architecture)
 
-[![Démarrage rapide](https://img.shields.io/badge/▶_Démarrage_rapide-2ea44f?style=for-the-badge)](#démarrage-rapide)
+[![Quick start](https://img.shields.io/badge/▶_Quick_start-2ea44f?style=for-the-badge)](#-quick-start)
 
 </div>
 
 ---
 
-## Pourquoi
+## 💡 Why
 
-Chaque Mac Apple Silicon récent embarque un LLM ~3 Mds de paramètres via **Apple Intelligence**. Le framework **FoundationModels** (macOS 26) y donne accès — mais uniquement depuis du code Swift, app par app.
+Every recent Apple Silicon Mac ships a ~3B-parameter LLM through **Apple Intelligence**. The **FoundationModels** framework (macOS 26) unlocks it — but only from Swift code, app by app.
 
-Les ponts existants couvrent chacun une partie du besoin, **jamais l'ensemble** : l'un fait du streaming mais pas Anthropic, un autre OpenAI mais pas FoundationModels, un troisième MLX mais pas on-device natif…
+Existing bridges each cover part of the need, **never the whole**: one does streaming but not Anthropic, another OpenAI but not FoundationModels, a third MLX but not the native on-device model…
 
-**FoundationBridge réunit, dans un seul binaire, toutes les façons de se connecter** au modèle on-device — pour que n'importe quel agent IA (Claude Code, Claude Desktop, Cursor, Zed, clients OpenAI/Anthropic…) puisse l'utiliser : gratuit, privé, hors-ligne.
+**FoundationBridge brings every way to connect together in a single binary** — so any AI agent (Claude Code, Claude Desktop, Cursor, Zed, OpenAI/Anthropic clients…) can use the on-device model: free, private, offline.
 
 ---
 
-## Surfaces de connexion
+## 🔌 Connection surfaces
 
-| Surface | Statut |
+| Surface | Status |
 |---|---|
-| **REST OpenAI-compatible** (`/v1/chat/completions`, `/v1/models`) | ✅ disponible |
-| **REST Anthropic-compatible** (`/v1/messages`) | ✅ disponible |
-| **Streaming SSE** (les deux formats, `stream: true`) | ✅ disponible |
-| **Snapshot streaming réel** (deltas via `streamResponse`) | ✅ disponible |
-| **MCP stdio** (`generate`, `list_models`) — Claude Desktop/Code, Cursor, Zed | ✅ disponible |
-| **Sessions multi-tours nommées** (in-process) | ✅ disponible |
-| **Authentification Bearer** optionnelle (`--token` / `FB_TOKEN`) | ✅ disponible |
-| **Mode proxy** (`ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL`) | ✅ disponible |
-| **CLI** (`version`, `diagnose`, `generate`, `serve`, `mcp`) | ✅ disponible |
-| **Binaire universel** (arm64 + x86_64 / Rosetta) | ✅ disponible |
-| **MCP Streamable-HTTP** + outil `generate_structured` | ⬜ à venir (v2.1) |
-| **ACP** (Zed Agent Client Protocol) | ⬜ à venir (v2.1) |
-| **WebSocket** (streaming bidirectionnel) | ⬜ à venir (v2.1) |
-| **SDK clients** (Swift first-class, guides Python/TS/Go/Rust) | ⬜ à venir (v2.1) |
+| **OpenAI-compatible REST** (`/v1/chat/completions`, `/v1/models`) | ✅ available |
+| **Anthropic-compatible REST** (`/v1/messages`) | ✅ available |
+| **SSE streaming** (both formats, `stream: true`) | ✅ available |
+| **Real snapshot streaming** (deltas via `streamResponse`) | ✅ available |
+| **MCP stdio** (`generate`, `list_models`) — Claude Desktop/Code, Cursor, Zed | ✅ available |
+| **Named multi-turn sessions** (in-process) | ✅ available |
+| **Optional Bearer auth** (`--token` / `FB_TOKEN`) | ✅ available |
+| **Proxy mode** (`ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL`) | ✅ available |
+| **CLI** (`version`, `diagnose`, `generate`, `serve`, `mcp`) | ✅ available |
+| **Universal binary** (arm64 + x86_64 / Rosetta) | ✅ available |
+| **MCP Streamable-HTTP** + `generate_structured` tool | 🚧 coming (v2.1) |
+| **ACP** (Zed Agent Client Protocol) | 🚧 coming (v2.1) |
+| **WebSocket** (bidirectional streaming) | 🚧 coming (v2.1) |
+| **Client SDKs** (first-class Swift, Python/TS/Go/Rust guides) | 🚧 coming (v2.1) |
 
 ---
 
-## Prérequis
+## 📋 Requirements
 
-- **Mac Apple Silicon** (M1 ou plus récent)
-- **macOS 26** (Tahoe, 26.5.x ou plus récent)
-- **Apple Intelligence activé** — Réglages → Apple Intelligence & Siri → modèle téléchargé
-- **Swift 6.x** / Xcode 26 (ou Command Line Tools)
+- **Apple Silicon Mac** (M1 or newer)
+- **macOS 26** (Tahoe, 26.5.x or newer)
+- **Apple Intelligence enabled** — Settings → Apple Intelligence & Siri → model downloaded
+- **Swift 6.x** / Xcode 26 (or Command Line Tools)
 
-> FoundationModels est exclusif aux plateformes Apple récentes : FoundationBridge ne vise pas Linux/Windows/x86.
+> ⚠️ FoundationModels is exclusive to recent Apple platforms: FoundationBridge does not target Linux/Windows/x86.
 
 ---
 
-## Démarrage rapide
+## 🚀 Quick start
 
-### 1 — Compiler
+### 1 — Build
 
 ```bash
 swift build -c release
 ```
 
-Le binaire est produit dans `.build/release/foundationbridge`.
+The binary lands in `.build/release/foundationbridge`.
 
-### 2 — Lancer le serveur
+### 2 — Run the server
 
 ```bash
 .build/release/foundationbridge serve --port 11434
 ```
 
-Ou, si le binaire est dans votre `PATH` :
-
-```bash
-foundationbridge serve --port 11434
-```
-
-Vérification :
+Check it:
 
 ```bash
 curl http://127.0.0.1:11434/healthz
 curl http://127.0.0.1:11434/v1/models
 ```
 
----
-
-### 3 — Exemples curl
-
-#### Format OpenAI — requête simple
+### 3 — curl example (OpenAI format)
 
 ```bash
 curl http://127.0.0.1:11434/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "apple/on-device",
-    "messages": [{"role": "user", "content": "Résume en une phrase : Swift est un langage compilé."}]
+    "messages": [{"role": "user", "content": "Summarize in one sentence: Swift is a compiled language."}]
   }'
 ```
 
-#### Format OpenAI — streaming SSE
+Add `"stream": true` for SSE streaming. The Anthropic format is served at `/v1/messages`.
 
-```bash
-curl --no-buffer http://127.0.0.1:11434/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "apple/on-device",
-    "stream": true,
-    "messages": [{"role": "user", "content": "Résume en une phrase : Swift est un langage compilé."}]
-  }'
-```
-
-#### Format Anthropic — requête simple
-
-```bash
-curl http://127.0.0.1:11434/v1/messages \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: local" \
-  -H "anthropic-version: 2023-06-01" \
-  -d '{
-    "model": "claude-3-haiku-20240307",
-    "max_tokens": 256,
-    "messages": [{"role": "user", "content": "Explique ce qu'\''est Apple Intelligence."}]
-  }'
-```
-
-#### Format Anthropic — streaming SSE
-
-```bash
-curl --no-buffer http://127.0.0.1:11434/v1/messages \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: local" \
-  -H "anthropic-version: 2023-06-01" \
-  -d '{
-    "model": "claude-3-haiku-20240307",
-    "max_tokens": 256,
-    "stream": true,
-    "messages": [{"role": "user", "content": "Explique ce qu'\''est Apple Intelligence."}]
-  }'
-```
-
----
-
-### 4 — Branchement Claude Code (mode proxy)
-
-Pour router Claude Code vers le modèle on-device local, définir la variable d'environnement avant de lancer Claude Code :
+### 4 — Wire up Claude Code (proxy mode)
 
 ```bash
 export ANTHROPIC_BASE_URL=http://127.0.0.1:11434
 claude
 ```
 
-Ou ponctuellement :
+### 5 — Wire up MCP (Claude Desktop/Code, Cursor, Zed)
 
 ```bash
-ANTHROPIC_BASE_URL=http://127.0.0.1:11434 claude "Résume ce fichier"
+claude mcp add foundationbridge -- /path/to/foundationbridge mcp
 ```
+
+The `generate` tool takes `prompt` (required) and `session` (optional, for multi-turn).
+
+### 6 — Authentication (optional)
+
+```bash
+foundationbridge serve --token my-secret
+# or: FB_TOKEN=my-secret foundationbridge serve
+```
+
+Requests then carry `Authorization: Bearer my-secret` (or `x-api-key`). A non-local bind (`--host 0.0.0.0`) **requires** a token.
 
 ---
 
-### 5 — Branchement MCP (Claude Desktop/Code, Cursor, Zed)
+## 🧰 CLI — available commands
 
-FoundationBridge expose le modèle on-device comme **serveur MCP stdio** (outils `generate` et `list_models`). Enregistrement dans Claude Code :
-
-```bash
-claude mcp add foundationbridge -- /chemin/vers/foundationbridge mcp
+```
+foundationbridge version          Print the binary version
+foundationbridge diagnose         Check Apple Intelligence availability
+foundationbridge generate <text>  Generate an on-device response (non-stream)
+foundationbridge serve [options]  Start the HTTP server (--port N --host H --token T)
+foundationbridge mcp              Start the MCP stdio server (JSON-RPC)
 ```
 
-Ou directement en stdio (JSON-RPC sur stdin/stdout) :
-
-```bash
-foundationbridge mcp
-```
-
-L'outil `generate` accepte `prompt` (requis) et `session` (optionnel, pour une conversation multi-tours conservée en mémoire).
+Universal binary (arm64 + x86_64): `./scripts/build-universal.sh`.
 
 ---
 
-### 6 — Authentification (optionnelle)
+## 🏗️ Architecture
 
-Par défaut le serveur écoute sur `127.0.0.1` sans authentification. Pour exiger un token Bearer :
+"One core, many façades": the FoundationModels binding is isolated from transport.
 
-```bash
-foundationbridge serve --token mon-secret
-# ou via l'environnement
-FB_TOKEN=mon-secret foundationbridge serve
-```
-
-Les requêtes doivent alors porter `Authorization: Bearer mon-secret` (ou `x-api-key: mon-secret`). Un bind non-local (`--host 0.0.0.0`) **exige** un token.
-
----
-
-## Binaire universel (arm64 + x86_64)
-
-Le script `scripts/build-universal.sh` produit un binaire universel qui tourne nativement sur Apple Silicon et via Rosetta sur Intel :
-
-```bash
-./scripts/build-universal.sh
-```
-
-Vérification des architectures embarquées :
-
-```bash
-lipo -archs .build/universal/foundationbridge
-# → x86_64 arm64
-```
-
----
-
-## CLI — commandes disponibles
-
-```
-foundationbridge version          Affiche la version du binaire
-foundationbridge diagnose         Vérifie la disponibilité d'Apple Intelligence
-foundationbridge generate <texte> Génère une réponse on-device (non-stream)
-foundationbridge serve [options]  Lance le serveur HTTP (--port N --host H --token T)
-foundationbridge mcp              Lance le serveur MCP stdio (JSON-RPC)
-```
-
----
-
-## Architecture
-
-« Un cœur, plusieurs façades » : le binding FoundationModels est isolé du transport. Les modules Swift compilés et testés :
-
-| Module | Rôle |
+| Module | Role |
 |---|---|
 | `FoundationBridgeCore` | ExitCode, BridgeError, ModelAvailability, TextGenerating, ContextManager, BearerAuth |
-| `FoundationBridgeSession` | `SessionManager` actor : sessions multi-tours nommées, une requête en vol/session |
-| `ProtocolConversion` | Modèles OpenAI ↔ Anthropic, golden tests de conversion |
-| `FoundationModelsBackend` | Binding réel au framework FoundationModels d'Apple (+ snapshot streaming) |
-| `FoundationBridgeServer` | Serveur HTTP Hummingbird 2, routes REST + SSE + middleware auth |
-| `FoundationBridgeMCP` | `MCPToolRouter` (logique) + `MCPServerRunner` (stdio via SDK MCP officiel) |
-| `FoundationBridgeCLI` | Exécutable, commandes `version/diagnose/generate/serve/mcp` |
+| `FoundationBridgeSession` | `SessionManager` actor: named multi-turn sessions, one in-flight request per session |
+| `ProtocolConversion` | OpenAI ↔ Anthropic models, conversion golden tests |
+| `FoundationModelsBackend` | Real binding to Apple's FoundationModels framework (+ snapshot streaming) |
+| `FoundationBridgeServer` | Hummingbird 2 HTTP server, REST + SSE routes + auth middleware |
+| `FoundationBridgeMCP` | `MCPToolRouter` (logic) + `MCPServerRunner` (stdio via the official MCP SDK) |
+| `FoundationBridgeCLI` | Executable, `version/diagnose/generate/serve/mcp` commands |
 
-46 tests passent. Détails : [`docs/specs/2026-06-04-foundationbridge-v2-design.md`](docs/specs/2026-06-04-foundationbridge-v2-design.md).
-
----
-
-## Feuille de route
-
-- **v1** — binding natif, streaming SSE, REST OpenAI + Anthropic + conversion testée, proxy, CLI, gestion contexte, binaire universel.
-- **v2-MVP (disponible)** — **serveur MCP stdio** (`generate`, `list_models`), **sessions multi-tours nommées** (`SessionManager` actor), **snapshot streaming réel** (`streamResponse`), **auth Bearer optionnelle**, port par défaut 11434.
-- **v2.1** — MCP Streamable-HTTP, outil `generate_structured` (`@Generable` → JSON Schema), ACP (Zed/JetBrains), WebSocket, Unix socket, SDK Swift first-class + guides Python/TS/Go/Rust.
-- **plus tard** — observabilité Prometheus, binaire signé/notarisé + Homebrew tap.
-
-Détails : [`docs/specs/2026-06-04-foundationbridge-v2-design.md`](docs/specs/2026-06-04-foundationbridge-v2-design.md).
+✅ **57 tests passing.** Details: [`docs/specs/2026-06-04-foundationbridge-v2-design.md`](docs/specs/2026-06-04-foundationbridge-v2-design.md).
 
 ---
 
-## Contribuer
+## 🗺️ Roadmap
 
-Voir [`CONTRIBUTING.md`](CONTRIBUTING.md). Les contributions sont les bienvenues, en particulier sur les golden tests de conversion et les adaptateurs de protocole.
+- **v1** — native binding, SSE streaming, OpenAI + Anthropic REST + tested conversion, proxy, CLI, context management, universal binary.
+- **v2-MVP (available)** — 🆕 **MCP stdio server** (`generate`, `list_models`), **named multi-turn sessions**, **real snapshot streaming**, **optional Bearer auth**, default port 11434.
+- **v2.1** — MCP Streamable-HTTP, `generate_structured` tool (`@Generable` → JSON Schema), ACP (Zed/JetBrains), WebSocket, Unix socket, first-class Swift SDK + Python/TS/Go/Rust guides.
+- **later** — Prometheus observability, signed/notarized binary + Homebrew tap.
 
 ---
 
-## Licence
+## 🤝 Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md). Contributions are welcome, especially on conversion golden tests and protocol adapters.
+
+---
+
+## 📄 License
 
 [Apache-2.0](LICENSE) — © 2026 Aïssa BELKOUSSA.

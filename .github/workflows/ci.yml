@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test:
+    name: Build & Test (Core + ProtocolConversion)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Swift version
+        run: swift --version
+
+      - name: Build
+        run: swift build
+
+      - name: Test
+        run: swift test
+
+  # Les chemins e2e du backend FoundationModels nécessitent un runner
+  # macOS 26 + Apple Silicon avec Apple Intelligence activé (non disponible
+  # sur les runners GitHub hébergés standards). Ils sont exécutés séparément
+  # sur un runner auto-hébergé éligible (à configurer).

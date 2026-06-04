@@ -6,6 +6,7 @@ let package = Package(
     platforms: [.macOS(.v15)],
     products: [
         .library(name: "FoundationBridgeCore", targets: ["FoundationBridgeCore"]),
+        .library(name: "FoundationBridgeSession", targets: ["FoundationBridgeSession"]),
         .library(name: "ProtocolConversion", targets: ["ProtocolConversion"]),
         .library(name: "FoundationModelsBackend", targets: ["FoundationModelsBackend"]),
         .library(name: "FoundationBridgeServer", targets: ["FoundationBridgeServer"]),
@@ -19,6 +20,14 @@ let package = Package(
         .testTarget(
             name: "FoundationBridgeCoreTests",
             dependencies: ["FoundationBridgeCore"]
+        ),
+        .target(
+            name: "FoundationBridgeSession",
+            dependencies: ["FoundationBridgeCore"]
+        ),
+        .testTarget(
+            name: "FoundationBridgeSessionTests",
+            dependencies: ["FoundationBridgeSession"]
         ),
         .target(
             name: "ProtocolConversion",

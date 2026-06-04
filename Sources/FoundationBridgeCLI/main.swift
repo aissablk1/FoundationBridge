@@ -74,7 +74,7 @@ func parsePort(_ args: [String]) -> Int {
     if let i = args.firstIndex(of: "--port"), i + 1 < args.count, let p = Int(args[i + 1]) {
         return p
     }
-    return 8080
+    return 11434
 }
 
 let args = Array(CommandLine.arguments.dropFirst())

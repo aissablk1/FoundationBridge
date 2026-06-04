@@ -10,7 +10,7 @@ import FoundationModelsBackend
 public struct ServerConfig: Sendable {
     public var host: String
     public var port: Int
-    public init(host: String = "127.0.0.1", port: Int = 8080) {
+    public init(host: String = "127.0.0.1", port: Int = 11434) {
         self.host = host
         self.port = port
     }

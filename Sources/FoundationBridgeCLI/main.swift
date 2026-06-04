@@ -2,6 +2,7 @@ import Foundation
 import FoundationBridgeCore
 import FoundationModelsBackend
 import FoundationBridgeServer
+import FoundationBridgeMCP
 
 /// CLI FoundationBridge. Codes de sortie sémantiques (cf. `ExitCode`).
 
@@ -18,6 +19,7 @@ func printUsage() {
       diagnose             Affiche la disponibilite du modele on-device
       generate <texte>     Genere une reponse (lit aussi stdin si pas d'argument)
       serve [--port N]     Demarre le serveur HTTP (REST OpenAI + Anthropic)
+      mcp                  Demarre le serveur MCP stdio (Claude Desktop/Code, Cursor, Zed)
       help                 Affiche cette aide
 
     CODES DE SORTIE:
@@ -105,6 +107,26 @@ case "serve":
         FileHandle.standardError.write(Data((String(describing: error) + "\n").utf8))
         code = ExitCode.genericError.rawValue
     }
+case "mcp":
+    // stdout est reserve au JSON-RPC ; tout diagnostic part sur stderr.
+    #if canImport(FoundationModels)
+    if #available(macOS 26.0, *) {
+        let router = MCPToolRouter(backend: FoundationModelsGenerator())
+        FileHandle.standardError.write(Data("FoundationBridge MCP (stdio) pret.\n".utf8))
+        do {
+            try await MCPServerRunner.run(router: router, version: FoundationBridge.coreVersion)
+        } catch {
+            FileHandle.standardError.write(Data((String(describing: error) + "\n").utf8))
+            code = ExitCode.genericError.rawValue
+        }
+    } else {
+        FileHandle.standardError.write(Data("MCP indisponible : macOS 26 requis.\n".utf8))
+        code = ExitCode.modelUnavailable.rawValue
+    }
+    #else
+    FileHandle.standardError.write(Data("MCP indisponible : FoundationModels absent sur cette plateforme.\n".utf8))
+    code = ExitCode.modelUnavailable.rawValue
+    #endif
 case "help", "--help", "-h":
     printUsage()
 default:

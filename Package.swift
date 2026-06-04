@@ -10,10 +10,12 @@ let package = Package(
         .library(name: "ProtocolConversion", targets: ["ProtocolConversion"]),
         .library(name: "FoundationModelsBackend", targets: ["FoundationModelsBackend"]),
         .library(name: "FoundationBridgeServer", targets: ["FoundationBridgeServer"]),
+        .library(name: "FoundationBridgeMCP", targets: ["FoundationBridgeMCP"]),
         .executable(name: "foundationbridge", targets: ["FoundationBridgeCLI"]),
     ],
     dependencies: [
         .package(url: "https://github.com/hummingbird-project/hummingbird.git", from: "2.0.0"),
+        .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", from: "0.9.0"),
     ],
     targets: [
         .target(name: "FoundationBridgeCore"),
@@ -50,6 +52,18 @@ let package = Package(
                 .product(name: "Hummingbird", package: "hummingbird"),
             ]
         ),
+        .target(
+            name: "FoundationBridgeMCP",
+            dependencies: [
+                "FoundationBridgeCore",
+                "FoundationBridgeSession",
+                .product(name: "MCP", package: "swift-sdk"),
+            ]
+        ),
+        .testTarget(
+            name: "FoundationBridgeMCPTests",
+            dependencies: ["FoundationBridgeMCP"]
+        ),
         .executableTarget(
             name: "FoundationBridgeCLI",
             dependencies: [
@@ -57,6 +71,7 @@ let package = Package(
                 "ProtocolConversion",
                 "FoundationModelsBackend",
                 "FoundationBridgeServer",
+                "FoundationBridgeMCP",
             ]
         ),
     ]

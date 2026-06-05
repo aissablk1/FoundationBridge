@@ -49,7 +49,9 @@ let package = Package(
                 "FoundationBridgeCore",
                 "ProtocolConversion",
                 "FoundationModelsBackend",
+                "FoundationBridgeMCP",
                 .product(name: "Hummingbird", package: "hummingbird"),
+                .product(name: "MCP", package: "swift-sdk"),
             ]
         ),
         .testTarget(

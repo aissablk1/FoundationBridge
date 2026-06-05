@@ -9,12 +9,13 @@ import MCP
 /// écrire de texte humain (utiliser `stderr` pour les diagnostics).
 public enum MCPServerRunner {
 
-    /// Démarre le serveur MCP sur stdio et bloque jusqu'à fermeture du transport.
-    public static func run(
+    /// Construit un serveur MCP avec les handlers d'outils enregistrés. Réutilisable
+    /// pour les transports stdio (`run`) et HTTP (`MCPHTTPApplication`).
+    public static func makeServer(
         router: MCPToolRouter,
         name: String = "foundationbridge",
         version: String
-    ) async throws {
+    ) async -> Server {
         let server = Server(
             name: name,
             version: version,
@@ -89,6 +90,16 @@ public enum MCPServerRunner {
             return .init(content: [.text(text: result.text, annotations: nil, _meta: nil)], isError: result.isError)
         }
 
+        return server
+    }
+
+    /// Démarre le serveur MCP sur stdio et bloque jusqu'à fermeture du transport.
+    public static func run(
+        router: MCPToolRouter,
+        name: String = "foundationbridge",
+        version: String
+    ) async throws {
+        let server = await makeServer(router: router, name: name, version: version)
         let transport = StdioTransport()
         try await server.start(transport: transport)
         await server.waitUntilCompleted()

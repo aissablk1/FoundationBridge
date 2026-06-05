@@ -24,7 +24,9 @@ func printUsage() {
                            Demarre le serveur HTTP (REST OpenAI + Anthropic)
                            --token (ou env FB_TOKEN) active l'auth Bearer
                            --host non-local exige un token
-      mcp                  Demarre le serveur MCP stdio (Claude Desktop/Code, Cursor, Zed)
+      mcp [--http [--port N] [--host H] [--token T]]
+                           Serveur MCP : stdio par defaut, ou Streamable-HTTP (--http)
+                           sur /mcp (Claude Desktop/Code, Cursor, Zed, clients distants)
       proxy [--port N] [--host H] [--token T] -- <commande> [args...]
                            Lance <commande> avec OPENAI_BASE_URL/ANTHROPIC_BASE_URL
                            pointant sur le bridge local (ex: proxy -- claude)
@@ -224,12 +226,35 @@ case "mcp":
             availability: { FoundationModelsGenerator.modelAvailability() },
             structured: FoundationModelsStructuredGenerator()
         )
-        FileHandle.standardError.write(Data("FoundationBridge MCP (stdio) pret.\n".utf8))
-        do {
-            try await MCPServerRunner.run(router: router, version: FoundationBridge.coreVersion)
-        } catch {
-            FileHandle.standardError.write(Data((String(describing: error) + "\n").utf8))
-            code = ExitCode.genericError.rawValue
+        if args.contains("--http") {
+            // Transport Streamable-HTTP (clients MCP web/distants). stdout reste libre.
+            let port = parsePort(args)
+            let host = parseFlag(args, "--host") ?? "127.0.0.1"
+            let token = parseFlag(args, "--token") ?? ProcessInfo.processInfo.environment["FB_TOKEN"]
+            if host != "127.0.0.1" && host != "localhost" && (token ?? "").isEmpty {
+                FileHandle.standardError.write(Data("Refus securite : --host non-local exige --token (ou FB_TOKEN).\n".utf8))
+                code = ExitCode.guardrailBlocked.rawValue
+            } else {
+                FileHandle.standardError.write(Data("FoundationBridge MCP (HTTP) sur http://\(host):\(port)/mcp\n".utf8))
+                do {
+                    try await FoundationBridgeServer.runMCPHTTP(
+                        router: router,
+                        config: .init(host: host, port: port, token: token),
+                        version: FoundationBridge.coreVersion
+                    )
+                } catch {
+                    FileHandle.standardError.write(Data((String(describing: error) + "\n").utf8))
+                    code = ExitCode.genericError.rawValue
+                }
+            }
+        } else {
+            FileHandle.standardError.write(Data("FoundationBridge MCP (stdio) pret.\n".utf8))
+            do {
+                try await MCPServerRunner.run(router: router, version: FoundationBridge.coreVersion)
+            } catch {
+                FileHandle.standardError.write(Data((String(describing: error) + "\n").utf8))
+                code = ExitCode.genericError.rawValue
+            }
         }
     } else {
         FileHandle.standardError.write(Data("MCP indisponible : macOS 26 requis.\n".utf8))

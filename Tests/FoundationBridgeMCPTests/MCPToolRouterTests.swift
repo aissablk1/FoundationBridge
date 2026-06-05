@@ -63,6 +63,54 @@ import FoundationBridgeCore
     #expect(result.text.contains("Apple Intelligence"))
 }
 
+/// Backend structuré factice : renvoie un JSON figé, sans toucher au modèle réel.
+private struct EchoStructured: StructuredGenerating {
+    let json: String
+    func generateStructured(prompt: String, schema: SchemaNode, options: GenerationOptions) async throws -> String {
+        json
+    }
+}
+
+@Test func generateStructuredSansBackendEstUneErreur() async {
+    let router = MCPToolRouter(backend: MockTextGenerator(scriptedResponse: ""))
+    let result = await router.callTool(
+        name: "generate_structured",
+        arguments: ["prompt": "x", "schema": #"{"type":"object","properties":{}}"#]
+    )
+    #expect(result.isError == true)
+    #expect(result.text.contains("non disponible"))
+}
+
+@Test func generateStructuredAvecBackendRenvoieLeJSON() async {
+    let router = MCPToolRouter(
+        backend: MockTextGenerator(scriptedResponse: ""),
+        structured: EchoStructured(json: #"{"ok":true}"#)
+    )
+    let result = await router.callTool(
+        name: "generate_structured",
+        arguments: ["prompt": "Décris", "schema": #"{"type":"object","properties":{"a":{"type":"string"}}}"#]
+    )
+    #expect(result.isError == false)
+    #expect(result.text == #"{"ok":true}"#)
+}
+
+@Test func generateStructuredSchemaInvalideEstUneErreur() async {
+    let router = MCPToolRouter(
+        backend: MockTextGenerator(scriptedResponse: ""),
+        structured: EchoStructured(json: "{}")
+    )
+    let result = await router.callTool(
+        name: "generate_structured",
+        arguments: ["prompt": "x", "schema": "pas du json"]
+    )
+    #expect(result.isError == true)
+}
+
+@Test func generateStructuredExposeDansListTools() async {
+    let router = MCPToolRouter(backend: MockTextGenerator(scriptedResponse: ""))
+    #expect(router.listTools().map(\.name).contains("generate_structured"))
+}
+
 @Test func outilInconnuEstUneErreur() async {
     let router = MCPToolRouter(backend: MockTextGenerator(scriptedResponse: ""))
     let result = await router.callTool(name: "inexistant", arguments: [:])

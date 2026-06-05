@@ -24,7 +24,8 @@ public enum MCPServerRunner {
         // Liste des outils.
         await server.withMethodHandler(ListTools.self) { _ in
             let tools: [Tool] = router.listTools().map { descriptor in
-                if descriptor.name == "generate" {
+                switch descriptor.name {
+                case "generate":
                     return Tool(
                         name: descriptor.name,
                         description: descriptor.description,
@@ -43,7 +44,26 @@ public enum MCPServerRunner {
                             "required": .array([.string("prompt")]),
                         ])
                     )
-                } else {
+                case "generate_structured":
+                    return Tool(
+                        name: descriptor.name,
+                        description: descriptor.description,
+                        inputSchema: .object([
+                            "type": .string("object"),
+                            "properties": .object([
+                                "prompt": .object([
+                                    "type": .string("string"),
+                                    "description": .string("La consigne de génération."),
+                                ]),
+                                "schema": .object([
+                                    "type": .string("string"),
+                                    "description": .string("JSON Schema (sous-ensemble) décrivant la sortie attendue."),
+                                ]),
+                            ]),
+                            "required": .array([.string("prompt"), .string("schema")]),
+                        ])
+                    )
+                default:
                     return Tool(
                         name: descriptor.name,
                         description: descriptor.description,

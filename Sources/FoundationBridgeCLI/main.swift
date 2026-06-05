@@ -18,6 +18,8 @@ func printUsage() {
       version              Affiche la version
       diagnose             Affiche la disponibilite du modele on-device
       generate <texte>     Genere une reponse (lit aussi stdin si pas d'argument)
+      structured <texte> <json-schema>
+                           Genere un objet JSON conforme au JSON Schema fourni
       serve [--port N] [--host H] [--token T]
                            Demarre le serveur HTTP (REST OpenAI + Anthropic)
                            --token (ou env FB_TOKEN) active l'auth Bearer
@@ -64,6 +66,34 @@ func runGenerate(prompt: String) async -> Int32 {
         #endif
         print(text)
         return ExitCode.success.rawValue
+    } catch let error as BridgeError {
+        FileHandle.standardError.write(Data((error.message + "\n").utf8))
+        return error.exitCode.rawValue
+    } catch {
+        FileHandle.standardError.write(Data((String(describing: error) + "\n").utf8))
+        return ExitCode.genericError.rawValue
+    }
+}
+
+/// Génération structurée : parse un JSON Schema, génère un objet JSON conforme on-device.
+func runStructured(prompt: String, schemaJSON: String) async -> Int32 {
+    guard !prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        FileHandle.standardError.write(Data("Entree invalide : prompt vide\n".utf8))
+        return ExitCode.invalidInput.rawValue
+    }
+    do {
+        let node = try JSONSchemaParser.parse(json: schemaJSON)
+        #if canImport(FoundationModels)
+        if #available(macOS 26.0, *) {
+            let json = try await FoundationModelsStructuredGenerator()
+                .generateStructured(prompt: prompt, schema: node, options: .init())
+            print(json)
+            return ExitCode.success.rawValue
+        }
+        throw BridgeError.modelUnavailable(reason: "macOS 26 requis")
+        #else
+        throw BridgeError.modelUnavailable(reason: "FoundationModels indisponible sur cette plateforme")
+        #endif
     } catch let error as BridgeError {
         FileHandle.standardError.write(Data((error.message + "\n").utf8))
         return error.exitCode.rawValue
@@ -156,6 +186,14 @@ case "generate":
     let inline = args.dropFirst().joined(separator: " ")
     let prompt = inline.isEmpty ? readStdin() : inline
     code = await runGenerate(prompt: prompt)
+case "structured":
+    let rest = Array(args.dropFirst())
+    if rest.count >= 2 {
+        code = await runStructured(prompt: rest[0], schemaJSON: rest[1])
+    } else {
+        FileHandle.standardError.write(Data("Usage : foundationbridge structured \"<texte>\" '<json-schema>'\n".utf8))
+        code = ExitCode.invalidInput.rawValue
+    }
 case "serve":
     let port = parsePort(args)
     let host = parseFlag(args, "--host") ?? "127.0.0.1"
@@ -183,7 +221,8 @@ case "mcp":
     if #available(macOS 26.0, *) {
         let router = MCPToolRouter(
             backend: FoundationModelsGenerator(),
-            availability: { FoundationModelsGenerator.modelAvailability() }
+            availability: { FoundationModelsGenerator.modelAvailability() },
+            structured: FoundationModelsStructuredGenerator()
         )
         FileHandle.standardError.write(Data("FoundationBridge MCP (stdio) pret.\n".utf8))
         do {

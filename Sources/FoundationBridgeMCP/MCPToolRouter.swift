@@ -33,16 +33,22 @@ public actor MCPToolRouter {
     /// module MCP n'importe PAS FoundationModels (testable sur mock) ; la CLI passe
     /// `FoundationModelsGenerator.modelAvailability`. Défaut : `.available`.
     private let availabilityProvider: @Sendable () -> ModelAvailability
+    /// Backend de génération structurée (JSON Schema → JSON). Optionnel : seul le
+    /// binding FoundationModels réel le fournit. Absent (nil) → l'outil renvoie une
+    /// erreur claire « non disponible sur cette plateforme ».
+    private let structured: (any StructuredGenerating)?
 
     public init(
         backend: any TextGenerating,
         modelId: String = "apple-foundation",
-        availability: @escaping @Sendable () -> ModelAvailability = { .available }
+        availability: @escaping @Sendable () -> ModelAvailability = { .available },
+        structured: (any StructuredGenerating)? = nil
     ) {
         self.backend = backend
         self.sessions = SessionManager(backend: backend)
         self.modelId = modelId
         self.availabilityProvider = availability
+        self.structured = structured
     }
 
     /// Outils exposés. `nonisolated` car purement statique (utilisable depuis le handler ListTools).
@@ -52,6 +58,12 @@ public actor MCPToolRouter {
                 name: "generate",
                 description: "Génère une réponse on-device via le LLM d'Apple (FoundationModels). "
                     + "Argument 'prompt' requis ; 'session' optionnel pour une conversation multi-tours."
+            ),
+            MCPToolDescriptor(
+                name: "generate_structured",
+                description: "Génère un objet JSON conforme à un JSON Schema (génération guidée "
+                    + "on-device). Arguments : 'prompt' et 'schema' (sous-ensemble JSON Schema : "
+                    + "object/string/integer/number/boolean/array/enum)."
             ),
             MCPToolDescriptor(
                 name: "list_models",
@@ -77,6 +89,28 @@ public actor MCPToolRouter {
                     text = try await backend.respond(to: prompt, options: .init())
                 }
                 return MCPToolResult(text: text, isError: false)
+            } catch let error as BridgeError {
+                return MCPToolResult(text: error.message, isError: true)
+            } catch {
+                return MCPToolResult(text: String(describing: error), isError: true)
+            }
+
+        case "generate_structured":
+            let prompt = (arguments["prompt"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !prompt.isEmpty else {
+                return MCPToolResult(text: "Argument 'prompt' requis et non vide.", isError: true)
+            }
+            let schemaJSON = arguments["schema"] ?? ""
+            guard !schemaJSON.isEmpty else {
+                return MCPToolResult(text: "Argument 'schema' (JSON Schema) requis.", isError: true)
+            }
+            guard let structured else {
+                return MCPToolResult(text: "Génération structurée non disponible sur cette plateforme.", isError: true)
+            }
+            do {
+                let node = try JSONSchemaParser.parse(json: schemaJSON)
+                let json = try await structured.generateStructured(prompt: prompt, schema: node, options: .init())
+                return MCPToolResult(text: json, isError: false)
             } catch let error as BridgeError {
                 return MCPToolResult(text: error.message, isError: true)
             } catch {

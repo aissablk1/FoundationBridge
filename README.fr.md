@@ -98,7 +98,17 @@ Ajouter `"stream": true` pour le streaming SSE. Le format Anthropic est exposé 
 
 ### 4 — Branchement Claude Code (mode proxy)
 
+Une seule commande démarre le bridge local et lance l'agent enveloppé avec
+`ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` déjà pointés dessus :
+
 ```bash
+foundationbridge proxy -- claude
+```
+
+Forme manuelle équivalente (serveur démarré à part) :
+
+```bash
+foundationbridge serve &
 export ANTHROPIC_BASE_URL=http://127.0.0.1:11434
 claude
 ```
@@ -150,7 +160,7 @@ Binaire universel (arm64 + x86_64) : `./scripts/build-universal.sh`.
 | `FoundationBridgeMCP` | `MCPToolRouter` (logique) + `MCPServerRunner` (stdio via SDK MCP officiel) |
 | `FoundationBridgeCLI` | Exécutable, commandes `version/diagnose/generate/serve/mcp` |
 
-✅ **58 tests passent.** Détails : [`docs/specs/2026-06-04-foundationbridge-v2-design.md`](docs/specs/2026-06-04-foundationbridge-v2-design.md).
+✅ **62 tests passent.** Détails : [`docs/specs/2026-06-04-foundationbridge-v2-design.md`](docs/specs/2026-06-04-foundationbridge-v2-design.md).
 
 ---
 

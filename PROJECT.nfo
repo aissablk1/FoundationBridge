@@ -45,7 +45,7 @@
   Server    : Hummingbird 2 (+ HummingbirdTesting for integration tests)
   MCP       : modelcontextprotocol/swift-sdk (0.12.x)
   Backend   : FoundationModels (macOS 26, Apple Silicon)
-  Tests     : swift-testing (58 tests passing)
+  Tests     : swift-testing (62 tests passing)
   Security  : OSV dependency scan in CI (osv-scanner on Package.resolved)
   CLI       : manual argument parsing (no dependency)
 

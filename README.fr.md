@@ -171,9 +171,9 @@ Binaire universel (arm64 + x86_64) : `./scripts/build-universal.sh`.
 ## 🗺️ Feuille de route
 
 - **v1** — binding natif, streaming SSE, REST OpenAI + Anthropic + conversion testée, proxy, CLI, gestion contexte, binaire universel.
-- **v2-MVP (disponible)** — 🆕 **serveur MCP stdio** (`generate`, `list_models`), **sessions multi-tours nommées**, **snapshot streaming réel**, **auth Bearer optionnelle**, port par défaut 11434.
-- **v2.1** — MCP Streamable-HTTP, outil `generate_structured` (`@Generable` → JSON Schema), ACP (Zed/JetBrains), WebSocket, Unix socket, SDK Swift first-class + guides Python/TS/Go/Rust.
-- **plus tard** — observabilité Prometheus, binaire signé/notarisé + Homebrew tap.
+- **v2-MVP (disponible)** — **serveur MCP stdio** (`generate`, `list_models`), **sessions multi-tours nommées**, **snapshot streaming réel**, **auth Bearer optionnelle**, port par défaut 11434.
+- **v2.1 (disponible)** — MCP Streamable-HTTP (`mcp --http`), `generate_structured` (JSON Schema runtime → JSON guidé via `DynamicGenerationSchema`), WebSocket (`/ws`), ACP (Zed, vérifié par smoke-test synthétique), guides clients (Python/Node/Go/Rust/curl).
+- **plus tard** — socket de domaine Unix, SDK Swift/TS publiés first-class, observabilité Prometheus, binaire signé/notarisé + Homebrew tap.
 
 ---
 

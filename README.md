@@ -171,9 +171,9 @@ Universal binary (arm64 + x86_64): `./scripts/build-universal.sh`.
 ## 🗺️ Roadmap
 
 - **v1** — native binding, SSE streaming, OpenAI + Anthropic REST + tested conversion, proxy, CLI, context management, universal binary.
-- **v2-MVP (available)** — 🆕 **MCP stdio server** (`generate`, `list_models`), **named multi-turn sessions**, **real snapshot streaming**, **optional Bearer auth**, default port 11434.
-- **v2.1** — MCP Streamable-HTTP, `generate_structured` tool (`@Generable` → JSON Schema), ACP (Zed/JetBrains), WebSocket, Unix socket, first-class Swift SDK + Python/TS/Go/Rust guides.
-- **later** — Prometheus observability, signed/notarized binary + Homebrew tap.
+- **v2-MVP (available)** — **MCP stdio server** (`generate`, `list_models`), **named multi-turn sessions**, **real snapshot streaming**, **optional Bearer auth**, default port 11434.
+- **v2.1 (available)** — MCP Streamable-HTTP (`mcp --http`), `generate_structured` (runtime JSON Schema → guided JSON via `DynamicGenerationSchema`), WebSocket (`/ws`), ACP (Zed, synthetic-smoke-verified), client guides (Python/Node/Go/Rust/curl).
+- **later** — Unix domain socket, first-class published Swift/TS SDKs, Prometheus observability, signed/notarized binary + Homebrew tap.
 
 ---
 

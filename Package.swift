@@ -76,6 +76,14 @@ let package = Package(
             name: "FoundationBridgeMCPTests",
             dependencies: ["FoundationBridgeMCP"]
         ),
+        .target(
+            name: "FoundationBridgeACP",
+            dependencies: ["FoundationBridgeCore", "FoundationBridgeSession"]
+        ),
+        .testTarget(
+            name: "FoundationBridgeACPTests",
+            dependencies: ["FoundationBridgeACP"]
+        ),
         .executableTarget(
             name: "FoundationBridgeCLI",
             dependencies: [
@@ -84,6 +92,7 @@ let package = Package(
                 "FoundationModelsBackend",
                 "FoundationBridgeServer",
                 "FoundationBridgeMCP",
+                "FoundationBridgeACP",
             ]
         ),
     ]

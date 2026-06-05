@@ -3,6 +3,7 @@ import FoundationBridgeCore
 import FoundationModelsBackend
 import FoundationBridgeServer
 import FoundationBridgeMCP
+import FoundationBridgeACP
 
 /// CLI FoundationBridge. Codes de sortie sémantiques (cf. `ExitCode`).
 
@@ -30,6 +31,7 @@ func printUsage() {
       proxy [--port N] [--host H] [--token T] -- <commande> [args...]
                            Lance <commande> avec OPENAI_BASE_URL/ANTHROPIC_BASE_URL
                            pointant sur le bridge local (ex: proxy -- claude)
+      acp                  Demarre le serveur ACP stdio (Zed Agent Client Protocol)
       help                 Affiche cette aide
 
     CODES DE SORTIE:
@@ -277,6 +279,21 @@ case "proxy":
         FileHandle.standardError.write(Data("Usage : foundationbridge proxy [--port N] [--host H] [--token T] -- <commande> [args...]\n".utf8))
         code = ExitCode.invalidInput.rawValue
     }
+case "acp":
+    // stdout est reserve au JSON-RPC ; tout diagnostic part sur stderr.
+    #if canImport(FoundationModels)
+    if #available(macOS 26.0, *) {
+        let server = ACPServer(backend: FoundationModelsGenerator())
+        FileHandle.standardError.write(Data("FoundationBridge ACP (stdio) pret.\n".utf8))
+        await server.runStdio()
+    } else {
+        FileHandle.standardError.write(Data("ACP indisponible : macOS 26 requis.\n".utf8))
+        code = ExitCode.modelUnavailable.rawValue
+    }
+    #else
+    FileHandle.standardError.write(Data("ACP indisponible : FoundationModels absent sur cette plateforme.\n".utf8))
+    code = ExitCode.modelUnavailable.rawValue
+    #endif
 case "help", "--help", "-h":
     printUsage()
 default:

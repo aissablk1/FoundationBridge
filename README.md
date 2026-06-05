@@ -46,7 +46,10 @@ Existing bridges each cover part of the need, **never the whole**: one does stre
 | **`generate_structured`** (JSON Schema → guided JSON, MCP tool + `structured` CLI) | ✅ available |
 | **WebSocket** (`/ws`, bidirectional streaming) | ✅ available |
 | **Client guides** (Python, Node, Go, Rust, curl — `docs/clients/`) | ✅ available |
-| **ACP** (Zed Agent Client Protocol) | 🚧 coming (v2.1) |
+| **ACP** (Zed Agent Client Protocol, `acp`) | ✅ available ¹ |
+
+¹ ACP verified via a synthetic JSON-RPC smoke test (initialize / session/new / session/prompt
+with a real on-device generation), not yet against a live Zed client.
 
 ---
 
@@ -161,7 +164,7 @@ Universal binary (arm64 + x86_64): `./scripts/build-universal.sh`.
 | `FoundationBridgeMCP` | `MCPToolRouter` (logic) + `MCPServerRunner` (stdio via the official MCP SDK) |
 | `FoundationBridgeCLI` | Executable, `version/diagnose/generate/serve/mcp` commands |
 
-✅ **71 tests passing.** Details: [`docs/specs/2026-06-04-foundationbridge-v2-design.md`](docs/specs/2026-06-04-foundationbridge-v2-design.md).
+✅ **79 tests passing.** Details: [`docs/specs/2026-06-04-foundationbridge-v2-design.md`](docs/specs/2026-06-04-foundationbridge-v2-design.md).
 
 ---
 

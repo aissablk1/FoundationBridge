@@ -43,7 +43,8 @@ tags: [v2.1, websocket, mcp-http, generate_structured, sdk-guides, foundationmod
 
 ## Actions à mener à l'avenir
 
-- **ACP (Zed Agent Client Protocol)** : seule surface restante en « coming ».
+- **ACP** : livré (serveur stdio JSON-RPC, 8 tests, smoke-test on-device). Reste à valider
+  contre un **vrai client Zed** (vérifié jusqu'ici via client synthétique uniquement).
 - Tests d'intégration automatisés pour WS et MCP-HTTP (actuellement smoke/manuels).
 - Réactiver le billing GitHub Actions (CI bloquée au niveau du compte).
 

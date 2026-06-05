@@ -9,7 +9,8 @@
 > wired into CI.
 > **2026-06-05 v2.1**: `generate_structured` (JSON Schema → guided JSON, device-verified),
 > MCP Streamable-HTTP (`mcp --http`), WebSocket `/ws` (device-verified), client guides
-> (Python/Node/Go/Rust/curl). 71 tests passing. Remaining: ACP (Zed) only.
+> (Python/Node/Go/Rust/curl), and **ACP** (Zed Agent Client Protocol, synthetic-smoke-verified).
+> 79 tests passing. All advertised v2.1 surfaces shipped.
 > **Author**: Aïssa BELKOUSSA · **Date**: 2026-06-04
 > **Scope**: extension of v1 (working server) toward a multi-protocol / multi-language bridge.
 > **Method**: derived from multi-agent research (teardown of 7 competitors + 7 protocols + adversarial completeness critique), reframed against the real v1 code.

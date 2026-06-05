@@ -7,7 +7,8 @@
 > scan de dépendances OSV branché dans la CI.
 > **v2.1 (2026-06-05)** : `generate_structured` (JSON Schema → JSON guidé, vérifié on-device),
 > MCP Streamable-HTTP (`mcp --http`), WebSocket `/ws` (vérifié on-device), guides clients
-> (Python/Node/Go/Rust/curl). 71 tests verts. Reste : ACP (Zed) uniquement.
+> (Python/Node/Go/Rust/curl), et **ACP** (Zed Agent Client Protocol, vérifié par smoke-test
+> synthétique). 79 tests verts. Toutes les surfaces v2.1 annoncées sont livrées.
 > **Auteur** : Aïssa BELKOUSSA
 > **Date** : 2026-06-04
 > **Portée** : extension de la v1 (serveur fonctionnel) vers un pont multi-protocoles / multi-langages.

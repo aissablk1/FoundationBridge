@@ -6,8 +6,10 @@
 > streaming, Bearer auth, port 11434, server hardening and integration tests shipped.
 > **2026-06-05 hardening**: proxy-safe SSE headers (`X-Accel-Buffering: no`, `nosniff`),
 > MCP `list_models` now reports real availability (`ready`/`status`), OSV dependency scan
-> wired into CI (58 tests passing). Remaining for v2.1: `generate_structured`,
-> MCP Streamable-HTTP, ACP, WebSocket, SDKs.
+> wired into CI.
+> **2026-06-05 v2.1**: `generate_structured` (JSON Schema → guided JSON, device-verified),
+> MCP Streamable-HTTP (`mcp --http`), WebSocket `/ws` (device-verified), client guides
+> (Python/Node/Go/Rust/curl). 71 tests passing. Remaining: ACP (Zed) only.
 > **Author**: Aïssa BELKOUSSA · **Date**: 2026-06-04
 > **Scope**: extension of v1 (working server) toward a multi-protocol / multi-language bridge.
 > **Method**: derived from multi-agent research (teardown of 7 competitors + 7 protocols + adversarial completeness critique), reframed against the real v1 code.

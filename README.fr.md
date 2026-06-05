@@ -40,12 +40,13 @@ Les ponts existants couvrent chacun une partie du besoin, **jamais l'ensemble** 
 | **Sessions multi-tours nommées** (in-process) | ✅ disponible |
 | **Authentification Bearer** optionnelle (`--token` / `FB_TOKEN`) | ✅ disponible |
 | **Mode proxy** (`ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL`) | ✅ disponible |
-| **CLI** (`version`, `diagnose`, `generate`, `serve`, `mcp`) | ✅ disponible |
+| **CLI** (`version`, `diagnose`, `generate`, `structured`, `serve`, `mcp`, `proxy`) | ✅ disponible |
 | **Binaire universel** (arm64 + x86_64 / Rosetta) | ✅ disponible |
-| **MCP Streamable-HTTP** + outil `generate_structured` | 🚧 à venir (v2.1) |
+| **MCP Streamable-HTTP** (`mcp --http`, `/mcp`) | ✅ disponible |
+| **`generate_structured`** (JSON Schema → JSON guidé, outil MCP + CLI `structured`) | ✅ disponible |
+| **WebSocket** (`/ws`, streaming bidirectionnel) | ✅ disponible |
+| **Guides clients** (Python, Node, Go, Rust, curl — `docs/clients/`) | ✅ disponible |
 | **ACP** (Zed Agent Client Protocol) | 🚧 à venir (v2.1) |
-| **WebSocket** (streaming bidirectionnel) | 🚧 à venir (v2.1) |
-| **SDK clients** (Swift first-class, guides Python/TS/Go/Rust) | 🚧 à venir (v2.1) |
 
 ---
 
@@ -160,7 +161,7 @@ Binaire universel (arm64 + x86_64) : `./scripts/build-universal.sh`.
 | `FoundationBridgeMCP` | `MCPToolRouter` (logique) + `MCPServerRunner` (stdio via SDK MCP officiel) |
 | `FoundationBridgeCLI` | Exécutable, commandes `version/diagnose/generate/serve/mcp` |
 
-✅ **62 tests passent.** Détails : [`docs/specs/2026-06-04-foundationbridge-v2-design.md`](docs/specs/2026-06-04-foundationbridge-v2-design.md).
+✅ **71 tests passent.** Détails : [`docs/specs/2026-06-04-foundationbridge-v2-design.md`](docs/specs/2026-06-04-foundationbridge-v2-design.md).
 
 ---
 

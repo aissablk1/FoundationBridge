@@ -211,7 +211,8 @@ case "serve":
             print("  GET  /v1/models")
             print("  POST /v1/chat/completions   (OpenAI)")
             print("  POST /v1/messages           (Anthropic)")
-            try await FoundationBridgeServer.makeApplication(config: .init(host: host, port: port, token: token)).runService()
+            print("  WS   /ws                    (streaming bidirectionnel)")
+            try await FoundationBridgeServer.makeWebSocketApplication(config: .init(host: host, port: port, token: token)).runService()
         } catch {
             FileHandle.standardError.write(Data((String(describing: error) + "\n").utf8))
             code = ExitCode.genericError.rawValue

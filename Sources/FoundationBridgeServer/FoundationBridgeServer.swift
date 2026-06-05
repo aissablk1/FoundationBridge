@@ -68,11 +68,20 @@ public enum FoundationBridgeServer {
         config: ServerConfig = .init(),
         backend: (any TextGenerating)? = nil
     ) -> some ApplicationProtocol {
-        let generator: any TextGenerating = backend ?? defaultBackend()
+        let router = buildRouter(generator: backend ?? defaultBackend(), token: config.token)
+        return Application(
+            router: router,
+            configuration: .init(address: .hostname(config.host, port: config.port))
+        )
+    }
+
+    /// Construit le routeur HTTP (REST OpenAI/Anthropic + SSE + auth). Extrait pour être
+    /// partagé entre l'application REST seule et l'application REST + WebSocket.
+    static func buildRouter(generator: any TextGenerating, token: String?) -> Router<BasicRequestContext> {
         let router = Router()
 
         // Authentification optionnelle : active uniquement si un token est configuré.
-        if let token = config.token, !token.isEmpty {
+        if let token, !token.isEmpty {
             router.add(middleware: BearerAuthMiddleware(token: token))
         }
 
@@ -128,10 +137,7 @@ public enum FoundationBridgeServer {
             }
         }
 
-        return Application(
-            router: router,
-            configuration: .init(address: .hostname(config.host, port: config.port))
-        )
+        return router
     }
 
     /// Backend réel quand FoundationModels est disponible, sinon repli explicite.

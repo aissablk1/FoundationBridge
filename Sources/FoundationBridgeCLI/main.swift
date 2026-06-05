@@ -23,6 +23,9 @@ func printUsage() {
                            --token (ou env FB_TOKEN) active l'auth Bearer
                            --host non-local exige un token
       mcp                  Demarre le serveur MCP stdio (Claude Desktop/Code, Cursor, Zed)
+      proxy [--port N] [--host H] [--token T] -- <commande> [args...]
+                           Lance <commande> avec OPENAI_BASE_URL/ANTHROPIC_BASE_URL
+                           pointant sur le bridge local (ex: proxy -- claude)
       help                 Affiche cette aide
 
     CODES DE SORTIE:
@@ -90,6 +93,54 @@ func parseFlag(_ args: [String], _ flag: String) -> String? {
     return nil
 }
 
+/// Sonde `GET /healthz` jusqu'à 200 (ou expiration). Sert à n'enchaîner le lancement
+/// de l'enfant qu'une fois le serveur local prêt à recevoir le trafic rerouté.
+func waitForHealthz(host: String, port: Int, attempts: Int = 30) async -> Bool {
+    let clientHost = (host == "0.0.0.0") ? "127.0.0.1" : host
+    guard let url = URL(string: "http://\(clientHost):\(port)/healthz") else { return false }
+    for _ in 0..<attempts {
+        if let (_, response) = try? await URLSession.shared.data(from: url),
+           let http = response as? HTTPURLResponse, http.statusCode == 200 {
+            return true
+        }
+        try? await Task.sleep(nanoseconds: 100_000_000) // 100 ms
+    }
+    return false
+}
+
+/// Mode proxy « reroute local » : démarre le serveur local en tâche de fond puis lance
+/// la commande enfant avec `OPENAI_BASE_URL`/`ANTHROPIC_BASE_URL` pointant sur le bridge.
+/// L'enfant (Claude Code, SDK openai/anthropic…) parle ainsi au modèle on-device sans
+/// modification. Le code de sortie de l'enfant est propagé ; le serveur est arrêté ensuite.
+func runProxy(host: String, port: Int, token: String?, childArgv: [String]) async -> Int32 {
+    let app = FoundationBridgeServer.makeApplication(config: .init(host: host, port: port, token: token))
+    let serverTask = Task { try? await app.runService() }
+    defer { serverTask.cancel() }
+
+    guard await waitForHealthz(host: host, port: port) else {
+        FileHandle.standardError.write(Data("Refus proxy : le serveur local n'a pas démarré (port \(port) occupé ?).\n".utf8))
+        return ExitCode.genericError.rawValue
+    }
+
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+    process.arguments = childArgv
+    process.environment = ProcessInfo.processInfo.environment.merging(
+        ProxyEnvironment.overrides(host: host, port: port, token: token)
+    ) { _, injected in injected }
+
+    do {
+        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+            process.terminationHandler = { _ in cont.resume() }
+            do { try process.run() } catch { cont.resume(throwing: error) }
+        }
+    } catch {
+        FileHandle.standardError.write(Data(("Échec du lancement de la commande enfant : \(error)\n").utf8))
+        return ExitCode.genericError.rawValue
+    }
+    return process.terminationStatus
+}
+
 let args = Array(CommandLine.arguments.dropFirst())
 let command = args.first ?? "help"
 var code: Int32 = ExitCode.success.rawValue
@@ -149,6 +200,18 @@ case "mcp":
     FileHandle.standardError.write(Data("MCP indisponible : FoundationModels absent sur cette plateforme.\n".utf8))
     code = ExitCode.modelUnavailable.rawValue
     #endif
+case "proxy":
+    let port = parsePort(args)
+    let host = parseFlag(args, "--host") ?? "127.0.0.1"
+    let token = parseFlag(args, "--token") ?? ProcessInfo.processInfo.environment["FB_TOKEN"]
+    if let sep = args.firstIndex(of: "--"), sep + 1 < args.count {
+        let childArgv = Array(args[(sep + 1)...])
+        print("FoundationBridge — proxy local http://\(host):\(port) → \(childArgv.joined(separator: " "))")
+        code = await runProxy(host: host, port: port, token: token, childArgv: childArgv)
+    } else {
+        FileHandle.standardError.write(Data("Usage : foundationbridge proxy [--port N] [--host H] [--token T] -- <commande> [args...]\n".utf8))
+        code = ExitCode.invalidInput.rawValue
+    }
 case "help", "--help", "-h":
     printUsage()
 default:
